@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>iOS Wielkiezer</title>
-  <script type="module" src="datastar.js"></script>
+  <title>Selectbox kiezer</title>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -40,97 +39,21 @@
       margin-bottom: 20px;
     }
 
-    /* ── Outer wheel wrapper — clips overflow ────────────────── */
-    .wheel-outer {
-      position: relative;
-      height: 220px; /* exactly 5 × 44 px */
-      overflow: hidden;
-      background: #f9f9fb;
+    /* ── Native expanded selectbox ───────────────────────────── */
+    .picker-select {
+      width: 100%;
+      font-size: 17px;
+      font-family: inherit;
+      border: 1px solid #c6c6c8;
       border-radius: 14px;
-    }
-
-    /* Gradient fade — top */
-    .wheel-outer::before {
-      content: '';
-      position: absolute;
-      inset: 0 0 auto 0;
-      height: 88px; /* 2 × item height */
-      background: linear-gradient(to bottom, rgba(249,249,251,1) 0%, rgba(249,249,251,0) 100%);
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    /* Gradient fade — bottom */
-    .wheel-outer::after {
-      content: '';
-      position: absolute;
-      inset: auto 0 0 0;
-      height: 88px;
-      background: linear-gradient(to top, rgba(249,249,251,1) 0%, rgba(249,249,251,0) 100%);
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    /* ── Hairline selection indicator ────────────────────────── */
-    .wheel-selector {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      inset-inline: 0;
-      height: 44px;
-      pointer-events: none;
-      z-index: 3;
-    }
-
-    .wheel-selector::before,
-    .wheel-selector::after {
-      content: '';
-      position: absolute;
-      inset-inline: 16px;
-      height: 0.5px;
-      background: #c6c6c8;
-    }
-
-    .wheel-selector::before { top: 0; }
-    .wheel-selector::after  { bottom: 0; }
-
-    /* ── Scrollable list ─────────────────────────────────────── */
-    .wheel-scroll {
-      height: 100%;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      position: relative;
-      z-index: 1;
-    }
-
-    .wheel-scroll::-webkit-scrollbar { display: none; }
-
-    /* Top + bottom padding let the first/last item reach the centre */
-    .wheel-scroll-inner {
-      padding: 88px 0;
-    }
-
-    /* ── Individual option ───────────────────────────────────── */
-    .wheel-item {
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 19px;
-      font-weight: 400;
-      color: rgba(60, 60, 67, 0.45);
-      scroll-snap-align: center;
-      user-select: none;
-      transition: color 0.2s ease, font-size 0.2s ease, font-weight 0.2s ease;
-    }
-
-    .wheel-item.selected {
+      background: #f9f9fb;
       color: #1c1c1e;
-      font-size: 22px;
-      font-weight: 500;
+      padding: 4px 0;
+    }
+
+    .picker-select option {
+      padding: 8px 16px;
+      text-align: center;
     }
 
     /* ── Result display ──────────────────────────────────────── */
@@ -149,64 +72,31 @@
 </head>
 <body>
 
-  <!--
-    data-signals : declares reactive state ($selected holds the chosen 0-based index, -1 = none)
-    data-on-click: updates $selected and scrolls the list so the chosen item is in the centre
-                   scrollTop = index × 44 px  (88px padding + 44px items → item centre = 110px from top)
-    data-class   : adds the "selected" CSS class when the signal matches the item's index
-    data-text    : reactively renders the chosen label in the result area
-  -->
-  <div class="picker-card"
-       data-signals="{selected: -1}">
-
+  <div class="picker-card">
     <div class="picker-title">Kies een optie</div>
 
-    <div class="wheel-outer">
-      <div class="wheel-selector"></div>
+    <select class="picker-select" size="5" id="pickerSelect"></select>
 
-      <div class="wheel-scroll" id="wheelScroll">
-        <!--
-          Items worden gegenereerd door onderstaand <script> vóór Datastar laadt.
-          Elk item krijgt:
-            • data-on-click : stelt $selected in én scrolt de lijst zodat het item gecentreerd is
-                              scrollTop = index × ITEM_HEIGHT px
-                              (88 px top-padding = 2 × ITEM_HEIGHT → item 0 is centreerbaar)
-            • data-class    : voegt de klasse "selected" toe wanneer het item de actieve is
-        -->
-        <div class="wheel-scroll-inner" id="wheelItems"></div>
-      </div>
-    </div>
-
-    <!-- data-text evalueert de expressie en schrijft de tekst naar het element -->
     <div class="picker-result">
       Geselecteerd:&nbsp;
-      <strong data-text="$selected >= 0 ? 'Optie ' + ($selected + 1) : 'Geen'"></strong>
+      <strong id="pickerResult">Geen</strong>
     </div>
-
   </div>
 
-  <!--
-    Genereer de 20 wheel-items vóór het Datastar module-script initialiseert
-    (module-scripts zijn automatisch uitgesteld tot na DOMContentLoaded,
-    reguliere inline-scripts draaien direct bij het parsen van de pagina).
-    Zo staan de data-on-click / data-class attributen al in de DOM
-    wanneer Datastar de pagina verwerkt.
-  -->
   <script>
-    var ITEM_HEIGHT = 44;
     var COUNT = 20;
-    var container = document.getElementById('wheelItems');
+    var select = document.getElementById('pickerSelect');
     for (var i = 0; i < COUNT; i++) {
-      var div = document.createElement('div');
-      div.className = 'wheel-item';
-      div.setAttribute(
-        'data-on-click',
-        '$selected = ' + i + '; document.getElementById(\'wheelScroll\').scrollTo({top: ' + (i * ITEM_HEIGHT) + ', behavior: \'smooth\'})'
-      );
-      div.setAttribute('data-class', '{selected: $selected === ' + i + '}');
-      div.textContent = 'Optie ' + (i + 1);
-      container.appendChild(div);
+      var option = document.createElement('option');
+      option.value = i + 1;
+      option.textContent = 'Optie ' + (i + 1);
+      select.appendChild(option);
     }
+
+    select.addEventListener('change', function () {
+      var result = document.getElementById('pickerResult');
+      result.textContent = select.value ? 'Optie ' + select.value : 'Geen';
+    });
   </script>
 
 </body>
