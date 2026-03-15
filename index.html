@@ -127,6 +127,9 @@
 
       /* Top + bottom padding allow the first/last option to be centred */
       padding-block: 88px;
+
+      /* Snap each option to the centre of the visible area */
+      scroll-snap-type: y mandatory;
     }
 
     .wheel-select::-webkit-scrollbar { display: none; }
@@ -134,14 +137,16 @@
 
     /* ── Individual options ───────────────────────────────────── */
     .wheel-select option {
-      /* Approximate 44 px row height: padding + font-size + leading.
-         Exact rendering varies by browser; the wheel stays aligned because
-         scrollToCenter() measures actual scrollHeight at runtime. */
+      /* Each option is approximately 44 px tall (padding + font-size + leading).
+         The ITEM_HEIGHT constant in the script must match this rendered height. */
       padding: 12px 0; /* top + bottom → ~44 px total with 19 px text */
       text-align: center;
       background: transparent;
       color: rgba(60, 60, 67, 0.45);
       font-size: 19px;
+
+      /* Snap the centre of each option to the centre of the scroll viewport */
+      scroll-snap-align: center;
     }
 
     /* iOS: the centred (selected) item is bold and full-opacity */
@@ -228,25 +233,24 @@
       }
 
       /* Scroll the selected option to the centre of the visible area.
-         Called once on load and again on every change event. */
+         Called once on load and again on every change event.
+         Formula: each option snaps at scrollTop = index × ITEM_HEIGHT because
+           paddingTop (88) + index × ITEM_HEIGHT + ITEM_HEIGHT/2 − clientHeight/2
+           = 88 + idx×44 + 22 − 110 = idx × 44 */
       function scrollToCenter(selectEl) {
         if (!selectEl.options.length) return; /* guard: no options yet */
-        var idx         = selectEl.selectedIndex;
-        var optHeight   = selectEl.scrollHeight / selectEl.options.length;
-        var visibleHalf = selectEl.clientHeight / 2;
-        selectEl.scrollTop = idx * optHeight - visibleHalf + optHeight / 2;
+        selectEl.scrollTop = selectEl.selectedIndex * ITEM_HEIGHT;
       }
 
       sel.addEventListener('change', function () {
         scrollToCenter(sel);
       });
 
-      /* Select the option that is centred between the hairlines, then snap it. */
+      /* Select the option that is centred between the hairlines, then snap it.
+         Reverse formula: index = round(scrollTop / ITEM_HEIGHT) */
       function selectCenteredOption(selectEl) {
         if (!selectEl.options.length) return;
-        var optHeight   = selectEl.scrollHeight / selectEl.options.length;
-        var visibleHalf = selectEl.clientHeight / 2;
-        var idx = Math.round((selectEl.scrollTop + visibleHalf - optHeight / 2) / optHeight);
+        var idx = Math.round(selectEl.scrollTop / ITEM_HEIGHT);
         idx = Math.max(0, Math.min(selectEl.options.length - 1, idx));
         if (selectEl.selectedIndex !== idx) {
           selectEl.selectedIndex = idx;
@@ -266,7 +270,7 @@
           clearTimeout(scrollTimer);
           scrollTimer = setTimeout(function () {
             selectCenteredOption(sel);
-          }, 150);
+          }, 80);
         });
       }
 
