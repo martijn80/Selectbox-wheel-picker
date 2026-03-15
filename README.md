@@ -4,7 +4,7 @@ Een native expanded selectbox, enhanced met [Datastar](https://data-star.dev/) v
 
 ## 🌐 Live demo
 
-**`https://martijn80.github.io/Selectbox-wheel-picker/`**
+**[https://martijn80.github.io/Selectbox-wheel-picker/](https://martijn80.github.io/Selectbox-wheel-picker/)**
 
 ## 🛠️ Lokaal testen
 
