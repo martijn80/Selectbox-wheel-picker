@@ -143,9 +143,12 @@
 
     /* ── Individual options ───────────────────────────────────── */
     .wheel-select option {
-      /* Each option renders at --item-h (44 px: 12px padding-top + ~19px font + ~1px leading + 12px padding-bottom).
-         $itemH in data-signals must match this rendered height. */
-      padding: 12px 0; /* top + bottom → ~44 px total with 19 px text */
+      /* Each option renders at exactly --item-h (44 px: 12px padding-top + 20px line-height + 12px padding-bottom).
+         $itemH in data-signals must match this rendered height.
+         line-height must be set explicitly; the browser default (~1.2×) would
+         make options ~47 px tall and break the scroll-index formula. */
+      padding: 12px 0;
+      line-height: 20px; /* 12 + 20 + 12 = 44 px exactly */
       text-align: center;
       background: transparent;
       color: rgba(60, 60, 67, 0.45);
@@ -215,7 +218,7 @@
         size="5"
         aria-label="Kies een optie"
         data-on-change="$selected = +evt.target.value; evt.target.scrollTop = evt.target.selectedIndex * $itemH"
-        data-on-scrollend="var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / $itemH), 0), evt.target.options.length - 1); evt.target.selectedIndex = idx; $selected = idx + 1; evt.target.scrollTop = idx * $itemH"
+        data-on-scrollend="var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / $itemH), 0), evt.target.options.length - 1); evt.target.selectedIndex = idx; $selected = idx + 1; evt.target.scrollTo({top: idx * $itemH, behavior: 'smooth'})"
       >
         <option value="1" selected>Optie 1</option>
         <option value="2">Optie 2</option>
