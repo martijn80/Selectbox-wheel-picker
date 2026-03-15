@@ -256,28 +256,42 @@
         • Two empty non-selectable options at the start and end replace the
           CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
           row without relying on CSS padding (so the without-CSS mode works too).
+
+        NOTE on CSS/Datastar visibility detection:
+          There is no CSS pseudo-selector (e.g. :visible) for which <option>
+          elements are currently in a scroll viewport. <option> elements are
+          not real CSS box-model nodes, so IntersectionObserver (and
+          Datastar's data-on-intersect) cannot observe them either.
+          The DOM APIs option.offsetTop / getBoundingClientRect() are likewise
+          unreliable for <option> elements across browsers.
+          Scroll-position math is therefore unavoidable; what we can do is
+          eliminate all hardcoded pixel values.
+
         • data-on-change      → on keyboard/click selection: update $selected and
                                 snap scrollTop so the chosen option is centred.
-                                h = scrollHeight / options.length (uniform height).
-                                lo = first real (non-placeholder) option index found
-                                     via findIndex — no hardcoded offsets.
-                                Centering formula: (selectedIndex − lo) × h
-        • data-on-scrollend   → after a fling/drag scroll: determine which index
-                                is at the centre of the visible viewport.
-                                Formula: Math.round(scrollTop / h) + lo
-                                  lo  = dynamically computed first real option index
-                                        (replaces the old hardcoded +2).
-                                hi  = dynamically computed last real option index
-                                        (replaces the old hardcoded options.length − 3).
-                                Neither lo nor hi are hardcoded, so the wheel keeps
-                                working if the number of placeholder options is changed.
+                                step = (scrollHeight − clientHeight) / (hi − lo)
+                                     = the scroll distance between the positions
+                                       where the first and last real option are
+                                       centred, divided by the number of steps.
+                                       Derived entirely from the DOM scroll range;
+                                       no hardcoded pixel values.
+                                lo  = first real (non-placeholder) option index
+                                      found via findIndex on the actual options.
+                                hi  = last real option index via findLastIndex.
+                                Centering formula: (selectedIndex − lo) × step
+        • data-on-scrollend   → after a fling/drag scroll: decode which index is
+                                at the centre of the visible viewport.
+                                Formula: Math.round(scrollTop / step) + lo
+                                Clamped to [lo, hi] so placeholder options are
+                                never selectable. Both lo, hi and step are read
+                                from the live DOM — no magic numbers anywhere.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on-change="$selected = +evt.target.value; var s = evt.target; var h = s.scrollHeight / s.options.length; var lo = Array.from(s.options).findIndex(function(o) { return o.value; }); s.scrollTop = (s.selectedIndex - lo) * h"
-        data-on-scrollend="var s = evt.target; var h = s.scrollHeight / s.options.length; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var i = Math.min(Math.max(Math.round(s.scrollTop / h) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value; s.scrollTo({ top: (i - lo) * h, behavior: 'smooth' })"
+        data-on-change="$selected = +evt.target.value; var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); s.scrollTop = (s.selectedIndex - lo) * step"
+        data-on-scrollend="var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); var i = Math.min(Math.max(Math.round(s.scrollTop / step) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value; s.scrollTo({ top: (i - lo) * step, behavior: 'smooth' })"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
