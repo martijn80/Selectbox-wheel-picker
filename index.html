@@ -241,6 +241,35 @@
         scrollToCenter(sel);
       });
 
+      /* Select the option that is centred between the hairlines, then snap it. */
+      function selectCenteredOption(selectEl) {
+        if (!selectEl.options.length) return;
+        var optHeight   = selectEl.scrollHeight / selectEl.options.length;
+        var visibleHalf = selectEl.clientHeight / 2;
+        var idx = Math.round((selectEl.scrollTop + visibleHalf - optHeight / 2) / optHeight);
+        idx = Math.max(0, Math.min(selectEl.options.length - 1, idx));
+        if (selectEl.selectedIndex !== idx) {
+          selectEl.selectedIndex = idx;
+          selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        scrollToCenter(selectEl);
+      }
+
+      /* Use scrollend when available; fall back to a debounced scroll handler. */
+      if ('onscrollend' in window) {
+        sel.addEventListener('scrollend', function () {
+          selectCenteredOption(sel);
+        });
+      } else {
+        var scrollTimer;
+        sel.addEventListener('scroll', function () {
+          clearTimeout(scrollTimer);
+          scrollTimer = setTimeout(function () {
+            selectCenteredOption(sel);
+          }, 150);
+        });
+      }
+
       /* Centre the initial selection after the layout is known */
       requestAnimationFrame(function () {
         scrollToCenter(sel);
