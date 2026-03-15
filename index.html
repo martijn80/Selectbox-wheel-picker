@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>iOS Wielkiezer</title>
+  <title>iOS Wheel Picker</title>
   <script type="module" src="datastar.js"></script>
   <style>
     *, *::before, *::after {
@@ -14,7 +14,6 @@
 
     body {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
@@ -40,22 +39,22 @@
       margin-bottom: 20px;
     }
 
-    /* ── Outer wheel wrapper — clips overflow ────────────────── */
+    /* ── Outer wheel wrapper — clips overflow, stacking context ── */
     .wheel-outer {
       position: relative;
-      height: 220px; /* exactly 5 × 44 px */
+      height: 220px; /* 5 × 44 px */
+      border-radius: 14px;
       overflow: hidden;
       background: #f9f9fb;
-      border-radius: 14px;
     }
 
-    /* Gradient fade — top */
+    /* Gradient fade — top (sits above the select via z-index) */
     .wheel-outer::before {
       content: '';
       position: absolute;
       inset: 0 0 auto 0;
       height: 88px; /* 2 × item height */
-      background: linear-gradient(to bottom, rgba(249,249,251,1) 0%, rgba(249,249,251,0) 100%);
+      background: linear-gradient(to bottom, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
     }
@@ -66,18 +65,18 @@
       position: absolute;
       inset: auto 0 0 0;
       height: 88px;
-      background: linear-gradient(to top, rgba(249,249,251,1) 0%, rgba(249,249,251,0) 100%);
+      background: linear-gradient(to top, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
     }
 
-    /* ── Hairline selection indicator ────────────────────────── */
+    /* ── Hairline selection indicator at the centre ──────────── */
     .wheel-selector {
       position: absolute;
       top: 50%;
-      transform: translateY(-50%);
       inset-inline: 0;
       height: 44px;
+      transform: translateY(-50%);
       pointer-events: none;
       z-index: 3;
     }
@@ -94,43 +93,66 @@
     .wheel-selector::before { top: 0; }
     .wheel-selector::after  { bottom: 0; }
 
-    /* ── Scrollable list ─────────────────────────────────────── */
-    .wheel-scroll {
+    /* ── Native expanded select — base element ───────────────── */
+    .wheel-select {
+      /* Strip native chrome */
+      appearance: none;
+      -webkit-appearance: none;
+
+      /* Fill the entire .wheel-outer */
+      display: block;
+      width: 100%;
       height: 100%;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
+      border: none;
+      outline: none;
+      border-radius: 14px;
+      background: transparent;
+
+      /* Typography */
+      font-family: inherit;
+      font-size: 19px;
+      color: rgba(60, 60, 67, 0.45);
+      text-align: center;
+      text-align-last: center;
+
+      /* Hide scrollbar, keep scroll */
+      overflow-y: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
+
+      /* Below the overlays */
       position: relative;
       z-index: 1;
-    }
-
-    .wheel-scroll::-webkit-scrollbar { display: none; }
-
-    /* Top + bottom padding let the first/last item reach the centre */
-    .wheel-scroll-inner {
-      padding: 88px 0;
-    }
-
-    /* ── Individual option ───────────────────────────────────── */
-    .wheel-item {
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       cursor: pointer;
-      font-size: 19px;
-      font-weight: 400;
-      color: rgba(60, 60, 67, 0.45);
-      scroll-snap-align: center;
-      user-select: none;
-      transition: color 0.2s ease, font-size 0.2s ease, font-weight 0.2s ease;
+
+      /* Top + bottom padding allow the first/last option to be centred */
+      padding-block: 88px;
     }
 
-    .wheel-item.selected {
+    .wheel-select::-webkit-scrollbar { display: none; }
+    .wheel-select:focus              { outline: none; }
+
+    /* ── Individual options ───────────────────────────────────── */
+    .wheel-select option {
+      /* Approximate 44 px row height: padding + font-size + leading.
+         Exact rendering varies by browser; the wheel stays aligned because
+         scrollToCenter() measures actual scrollHeight at runtime. */
+      padding: 12px 0; /* top + bottom → ~44 px total with 19 px text */
+      text-align: center;
+      background: transparent;
+      color: rgba(60, 60, 67, 0.45);
+      font-size: 19px;
+    }
+
+    /* iOS: the centred (selected) item is bold and full-opacity */
+    .wheel-select option:checked {
       color: #1c1c1e;
       font-size: 22px;
-      font-weight: 500;
+      font-weight: 600;
+      /* Use a gradient instead of a solid colour to override the UA's default
+         blue/highlight background on :checked <option> elements in Chromium,
+         while keeping the background visually transparent. */
+      background: linear-gradient(transparent, transparent);
     }
 
     /* ── Result display ──────────────────────────────────────── */
@@ -150,63 +172,80 @@
 <body>
 
   <!--
-    data-signals : declares reactive state ($selected holds the chosen 0-based index, -1 = none)
-    data-on-click: updates $selected and scrolls the list so the chosen item is in the centre
-                   scrollTop = index × 44 px  (88px padding + 44px items → item centre = 110px from top)
-    data-class   : adds the "selected" CSS class when the signal matches the item's index
-    data-text    : reactively renders the chosen label in the result area
+    data-signals : declares reactive state ($selected = current option value, 1-based)
+    data-on-change: Datastar updates $selected when the user picks an option (evt is the DOM event)
+    data-text    : reactively renders the selected label in the result area
   -->
   <div class="picker-card"
-       data-signals="{selected: -1}">
+       data-signals="{selected: 1}">
 
-    <div class="picker-title">Kies een optie</div>
+    <p class="picker-title">Kies een optie</p>
 
     <div class="wheel-outer">
-      <div class="wheel-selector"></div>
+      <!-- Hairline indicator marks the "active" centre row -->
+      <div class="wheel-selector" aria-hidden="true"></div>
 
-      <div class="wheel-scroll" id="wheelScroll">
-        <!--
-          Items worden gegenereerd door onderstaand <script> vóór Datastar laadt.
-          Elk item krijgt:
-            • data-on-click : stelt $selected in én scrolt de lijst zodat het item gecentreerd is
-                              scrollTop = index × ITEM_HEIGHT px
-                              (88 px top-padding = 2 × ITEM_HEIGHT → item 0 is centreerbaar)
-            • data-class    : voegt de klasse "selected" toe wanneer het item de actieve is
-        -->
-        <div class="wheel-scroll-inner" id="wheelItems"></div>
-      </div>
+      <!--
+        Native expanded select — accessible base element.
+        • size="5"         → shows exactly 5 rows; scrollable listbox
+        • data-on-change   → Datastar listens to the change event;
+                             evt.target.value holds the chosen option value
+      -->
+      <select
+        class="wheel-select"
+        size="5"
+        id="pickerSelect"
+        aria-label="Kies een optie"
+        data-on-change="$selected = +evt.target.value"
+      ></select>
     </div>
 
-    <!-- data-text evalueert de expressie en schrijft de tekst naar het element -->
-    <div class="picker-result">
-      Geselecteerd:&nbsp;
-      <strong data-text="$selected >= 0 ? 'Optie ' + ($selected + 1) : 'Geen'"></strong>
-    </div>
+    <!-- data-text evaluates the expression and writes it as text content -->
+    <p class="picker-result">
+      Geselecteerd:&nbsp;<strong data-text="'Optie ' + $selected"></strong>
+    </p>
 
   </div>
 
   <!--
-    Genereer de 20 wheel-items vóór het Datastar module-script initialiseert
-    (module-scripts zijn automatisch uitgesteld tot na DOMContentLoaded,
-    reguliere inline-scripts draaien direct bij het parsen van de pagina).
-    Zo staan de data-on-click / data-class attributen al in de DOM
-    wanneer Datastar de pagina verwerkt.
+    Generate the 20 <option> elements before the Datastar module script initialises.
+    Module scripts are deferred to DOMContentLoaded; this inline script runs
+    immediately during HTML parsing, so the data-* attributes are already in the
+    DOM when Datastar processes the page.
   -->
   <script>
-    var ITEM_HEIGHT = 44;
-    var COUNT = 20;
-    var container = document.getElementById('wheelItems');
-    for (var i = 0; i < COUNT; i++) {
-      var div = document.createElement('div');
-      div.className = 'wheel-item';
-      div.setAttribute(
-        'data-on-click',
-        '$selected = ' + i + '; document.getElementById(\'wheelScroll\').scrollTo({top: ' + (i * ITEM_HEIGHT) + ', behavior: \'smooth\'})'
-      );
-      div.setAttribute('data-class', '{selected: $selected === ' + i + '}');
-      div.textContent = 'Optie ' + (i + 1);
-      container.appendChild(div);
-    }
+    (function () {
+      var ITEM_HEIGHT = 44;
+      var COUNT       = 20;
+      var sel         = document.getElementById('pickerSelect');
+
+      for (var i = 0; i < COUNT; i++) {
+        var opt = document.createElement('option');
+        opt.value       = String(i + 1);
+        opt.textContent = 'Optie ' + (i + 1);
+        if (i === 0) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      /* Scroll the selected option to the centre of the visible area.
+         Called once on load and again on every change event. */
+      function scrollToCenter(selectEl) {
+        if (!selectEl.options.length) return; /* guard: no options yet */
+        var idx         = selectEl.selectedIndex;
+        var optHeight   = selectEl.scrollHeight / selectEl.options.length;
+        var visibleHalf = selectEl.clientHeight / 2;
+        selectEl.scrollTop = idx * optHeight - visibleHalf + optHeight / 2;
+      }
+
+      sel.addEventListener('change', function () {
+        scrollToCenter(sel);
+      });
+
+      /* Centre the initial selection after the layout is known */
+      requestAnimationFrame(function () {
+        scrollToCenter(sel);
+      });
+    })();
   </script>
 
 </body>
