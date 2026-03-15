@@ -13,9 +13,8 @@
     }
 
      /* ── Item height — single source of truth for all wheel dimensions.
-        $itemH in data-signals must equal this value in px.
-        (CSS custom properties are not accessible from HTML attributes without
-         JavaScript, so the numeric value is also held as a Datastar signal.) */
+        (CSS custom properties are not accessible from HTML attributes; the
+         item height is derived dynamically in JS via scrollHeight / options.length.) */
     :root { --item-h: 44px; }
 
     body {
@@ -131,8 +130,8 @@
       z-index: 1;
       cursor: pointer;
 
-      /* Top + bottom padding allow the first/last option to be centred */
-      padding-block: calc(var(--item-h) * 2);
+      /* Two empty leading/trailing options (added in HTML) allow the first/last
+         real option to be centred without CSS padding. */
 
       /* Snap each option to the centre of the visible area */
       scroll-snap-type: y mandatory;
@@ -144,9 +143,8 @@
     /* ── Individual options ───────────────────────────────────── */
     .wheel-select option {
       /* Each option renders at exactly --item-h (44 px: 12px padding-top + 20px line-height + 12px padding-bottom).
-         $itemH in data-signals must match this rendered height.
          line-height must be set explicitly; the browser default (~1.2×) would
-         make options ~47 px tall and break the scroll-index formula. */
+         make options ~47 px tall and cause uneven scroll snapping. */
       padding: 12px 0;
       line-height: 20px; /* 12 + 20 + 12 = 44 px exactly */
       text-align: center;
@@ -239,12 +237,11 @@
   <!--
     data-signals : declares reactive state
                    $selected = current option value (1-based)
-                   $itemH    = item height in px; mirrors --item-h in CSS
     data-on-change: Datastar updates $selected when the user picks an option (evt is the DOM event)
     data-text    : reactively renders the selected label in the result area
   -->
   <div class="picker-card"
-       data-signals="{selected: 1, itemH: 44, cssAan: true}"
+       data-signals="{selected: 1, cssAan: true}"
        data-class='{"css-uit": !$cssAan}'>
 
     <p class="picker-title">Kies een optie</p>
@@ -256,22 +253,31 @@
       <!--
         Native expanded select — accessible base element.
         • size="5"            → shows exactly 5 rows; scrollable listbox
+        • Two empty non-selectable options at the start and end replace the
+          CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
+          row without relying on CSS padding (so the without-CSS mode works too).
         • data-on-change      → on keyboard/click selection: update $selected and
-                                snap scrollTop so the chosen option is centred
-        • data-on-scrollend   → after a fling/drag scroll: read the snapped
-                                scrollTop, derive the centred index, update
-                                selectedIndex and $selected, then confirm snap
-        $itemH (from data-signals) holds the item height in px; it is the same
-        value as --item-h and is used here because HTML attributes cannot read
-        CSS custom properties directly.
+                                snap scrollTop so the chosen option is centred.
+                                optH (= scrollHeight / options.length) is derived
+                                at runtime, so it works at any rendered item height.
+        • data-on-scrollend   → after a fling/drag scroll: determine which index
+                                is at the centre of the 5-visible-row viewport.
+                                Formula: Math.round(scrollTop / optH) + 2
+                                  +2  = the 2 empty leading options; at scrollTop=0
+                                        option index 2 (Optie 1) is at the centre.
+                                Clamped to [2, options.length - 3] where -3 accounts
+                                for the 2 empty trailing options plus 0-based indexing
+                                (last real option = total - 1 - 2 trailing = total - 3).
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on-change="$selected = +evt.target.value; evt.target.scrollTop = evt.target.selectedIndex * $itemH"
-        data-on-scrollend="var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / $itemH), 0), evt.target.options.length - 1); evt.target.selectedIndex = idx; $selected = idx + 1; evt.target.scrollTo({top: idx * $itemH, behavior: 'smooth'})"
+        data-on-change="$selected = +evt.target.value; var optH = evt.target.scrollHeight / evt.target.options.length; evt.target.scrollTop = (evt.target.selectedIndex - 2) * optH"
+        data-on-scrollend="var optH = evt.target.scrollHeight / evt.target.options.length; var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / optH) + 2, 2), evt.target.options.length - 3); evt.target.selectedIndex = idx; $selected = +evt.target.options[idx].value; evt.target.scrollTo({top: (idx - 2) * optH, behavior: 'smooth'})"
       >
+        <option value="" disabled aria-hidden="true"></option>
+        <option value="" disabled aria-hidden="true"></option>
         <option value="1" selected>Optie 1</option>
         <option value="2">Optie 2</option>
         <option value="3">Optie 3</option>
@@ -292,6 +298,8 @@
         <option value="18">Optie 18</option>
         <option value="19">Optie 19</option>
         <option value="20">Optie 20</option>
+        <option value="" disabled aria-hidden="true"></option>
+        <option value="" disabled aria-hidden="true"></option>
       </select>
     </div>
 
