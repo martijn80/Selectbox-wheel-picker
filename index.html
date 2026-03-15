@@ -181,6 +181,57 @@
       color: #007aff;
       font-weight: 600;
     }
+
+    /* ── CSS-toggle ───────────────────────────────────────────── */
+    .css-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #3c3c43;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .css-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #007aff;
+    }
+
+    /* ── CSS uitschakelen: reset alle wheel-picker stijlen ─────── */
+    .css-uit .wheel-outer {
+      height: auto;
+      border-radius: 0;
+      overflow: visible;
+      background: none;
+    }
+
+    .css-uit .wheel-outer::before,
+    .css-uit .wheel-outer::after {
+      display: none;
+    }
+
+    .css-uit .wheel-selector {
+      display: none;
+    }
+
+    .css-uit .wheel-select {
+      all: revert;
+    }
+
+    .css-uit .wheel-select::-webkit-scrollbar { display: revert; }
+
+    .css-uit .wheel-select option {
+      all: revert;
+    }
+
+    .css-uit .wheel-select option:checked {
+      all: revert;
+    }
   </style>
 </head>
 <body>
@@ -193,7 +244,8 @@
     data-text    : reactively renders the selected label in the result area
   -->
   <div class="picker-card"
-       data-signals="{selected: 1, itemH: 44}">
+       data-signals="{selected: 1, itemH: 44, cssAan: true}"
+       data-class='{"css-uit": !$cssAan}'>
 
     <p class="picker-title">Kies een optie</p>
 
@@ -247,6 +299,16 @@
     <p class="picker-result">
       Geselecteerd:&nbsp;<strong data-text="'Optie ' + $selected"></strong>
     </p>
+
+    <!-- Toggle to enable/disable the CSS styling -->
+    <label class="css-toggle">
+      <input
+        type="checkbox"
+        checked
+        data-on-change="$cssAan = evt.target.checked"
+      />
+      CSS inschakelen
+    </label>
 
   </div>
 
