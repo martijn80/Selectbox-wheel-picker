@@ -32,3 +32,4 @@ python3 -m http.server 8080
 | Andere opties gedeselecteerd | Standaard `<select>`-gedrag; één waarde actief tegelijk |
 | Datastar signals & attributes | `data-signals`, `data-on-change` (met `evt`), `data-text` |
 | iOS-uitstraling | Gradient-fades, hairline-selectie-indicator, `appearance: none`, SF Pro font-stack |
+| CSS uitschakelen | Vinkje onderaan de kaart verwijdert alle wheel-picker stijlen en toont het kale `<select>`-element |
