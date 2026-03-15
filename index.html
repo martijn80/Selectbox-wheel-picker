@@ -12,6 +12,12 @@
       padding: 0;
     }
 
+     /* ── Item height — single source of truth for all wheel dimensions.
+        $itemH in data-signals must equal this value in px.
+        (CSS custom properties are not accessible from HTML attributes without
+         JavaScript, so the numeric value is also held as a Datastar signal.) */
+    :root { --item-h: 44px; }
+
     body {
       display: flex;
       align-items: center;
@@ -42,7 +48,7 @@
     /* ── Outer wheel wrapper — clips overflow, stacking context ── */
     .wheel-outer {
       position: relative;
-      height: 220px; /* 5 × 44 px */
+      height: calc(var(--item-h) * 5); /* 5 visible rows */
       border-radius: 14px;
       overflow: hidden;
       background: #f9f9fb;
@@ -53,7 +59,7 @@
       content: '';
       position: absolute;
       inset: 0 0 auto 0;
-      height: 88px; /* 2 × item height */
+      height: calc(var(--item-h) * 2); /* 2 × item height */
       background: linear-gradient(to bottom, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
@@ -64,7 +70,7 @@
       content: '';
       position: absolute;
       inset: auto 0 0 0;
-      height: 88px;
+      height: calc(var(--item-h) * 2);
       background: linear-gradient(to top, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
@@ -75,7 +81,7 @@
       position: absolute;
       top: 50%;
       inset-inline: 0;
-      height: 44px;
+      height: var(--item-h);
       transform: translateY(-50%);
       pointer-events: none;
       z-index: 3;
@@ -126,7 +132,7 @@
       cursor: pointer;
 
       /* Top + bottom padding allow the first/last option to be centred */
-      padding-block: 88px;
+      padding-block: calc(var(--item-h) * 2);
 
       /* Snap each option to the centre of the visible area */
       scroll-snap-type: y mandatory;
@@ -137,8 +143,8 @@
 
     /* ── Individual options ───────────────────────────────────── */
     .wheel-select option {
-      /* Each option is approximately 44 px tall (padding + font-size + leading).
-         The ITEM_HEIGHT constant in the script must match this rendered height. */
+      /* Each option renders at --item-h (44 px: 12px padding-top + ~19px font + ~1px leading + 12px padding-bottom).
+         $itemH in data-signals must match this rendered height. */
       padding: 12px 0; /* top + bottom → ~44 px total with 19 px text */
       text-align: center;
       background: transparent;
@@ -177,12 +183,14 @@
 <body>
 
   <!--
-    data-signals : declares reactive state ($selected = current option value, 1-based)
+    data-signals : declares reactive state
+                   $selected = current option value (1-based)
+                   $itemH    = item height in px; mirrors --item-h in CSS
     data-on-change: Datastar updates $selected when the user picks an option (evt is the DOM event)
     data-text    : reactively renders the selected label in the result area
   -->
   <div class="picker-card"
-       data-signals="{selected: 1}">
+       data-signals="{selected: 1, itemH: 44}">
 
     <p class="picker-title">Kies een optie</p>
 
@@ -192,17 +200,44 @@
 
       <!--
         Native expanded select — accessible base element.
-        • size="5"         → shows exactly 5 rows; scrollable listbox
-        • data-on-change   → Datastar listens to the change event;
-                             evt.target.value holds the chosen option value
+        • size="5"            → shows exactly 5 rows; scrollable listbox
+        • data-on-change      → on keyboard/click selection: update $selected and
+                                snap scrollTop so the chosen option is centred
+        • data-on-scrollend   → after a fling/drag scroll: read the snapped
+                                scrollTop, derive the centred index, update
+                                selectedIndex and $selected, then confirm snap
+        $itemH (from data-signals) holds the item height in px; it is the same
+        value as --item-h and is used here because HTML attributes cannot read
+        CSS custom properties directly.
       -->
       <select
         class="wheel-select"
         size="5"
-        id="pickerSelect"
         aria-label="Kies een optie"
-        data-on-change="$selected = +evt.target.value"
-      ></select>
+        data-on-change="$selected = +evt.target.value; evt.target.scrollTop = evt.target.selectedIndex * $itemH"
+        data-on-scrollend="var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / $itemH), 0), evt.target.options.length - 1); evt.target.selectedIndex = idx; $selected = idx + 1; evt.target.scrollTop = idx * $itemH"
+      >
+        <option value="1" selected>Optie 1</option>
+        <option value="2">Optie 2</option>
+        <option value="3">Optie 3</option>
+        <option value="4">Optie 4</option>
+        <option value="5">Optie 5</option>
+        <option value="6">Optie 6</option>
+        <option value="7">Optie 7</option>
+        <option value="8">Optie 8</option>
+        <option value="9">Optie 9</option>
+        <option value="10">Optie 10</option>
+        <option value="11">Optie 11</option>
+        <option value="12">Optie 12</option>
+        <option value="13">Optie 13</option>
+        <option value="14">Optie 14</option>
+        <option value="15">Optie 15</option>
+        <option value="16">Optie 16</option>
+        <option value="17">Optie 17</option>
+        <option value="18">Optie 18</option>
+        <option value="19">Optie 19</option>
+        <option value="20">Optie 20</option>
+      </select>
     </div>
 
     <!-- data-text evaluates the expression and writes it as text content -->
@@ -211,75 +246,6 @@
     </p>
 
   </div>
-
-  <!--
-    Generate the 20 <option> elements before the Datastar module script initialises.
-    Module scripts are deferred to DOMContentLoaded; this inline script runs
-    immediately during HTML parsing, so the data-* attributes are already in the
-    DOM when Datastar processes the page.
-  -->
-  <script>
-    (function () {
-      var ITEM_HEIGHT = 44;
-      var COUNT       = 20;
-      var sel         = document.getElementById('pickerSelect');
-
-      for (var i = 0; i < COUNT; i++) {
-        var opt = document.createElement('option');
-        opt.value       = String(i + 1);
-        opt.textContent = 'Optie ' + (i + 1);
-        if (i === 0) opt.selected = true;
-        sel.appendChild(opt);
-      }
-
-      /* Scroll the selected option to the centre of the visible area.
-         Called once on load and again on every change event.
-         Formula: each option snaps at scrollTop = index × ITEM_HEIGHT because
-           paddingTop (88) + index × ITEM_HEIGHT + ITEM_HEIGHT/2 − clientHeight/2
-           = 88 + idx×44 + 22 − 110 = idx × 44 */
-      function scrollToCenter(selectEl) {
-        if (!selectEl.options.length) return; /* guard: no options yet */
-        selectEl.scrollTop = selectEl.selectedIndex * ITEM_HEIGHT;
-      }
-
-      sel.addEventListener('change', function () {
-        scrollToCenter(sel);
-      });
-
-      /* Select the option that is centred between the hairlines, then snap it.
-         Reverse formula: index = round(scrollTop / ITEM_HEIGHT) */
-      function selectCenteredOption(selectEl) {
-        if (!selectEl.options.length) return;
-        var idx = Math.round(selectEl.scrollTop / ITEM_HEIGHT);
-        idx = Math.max(0, Math.min(selectEl.options.length - 1, idx));
-        if (selectEl.selectedIndex !== idx) {
-          selectEl.selectedIndex = idx;
-          selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        scrollToCenter(selectEl);
-      }
-
-      /* Use scrollend when available; fall back to a debounced scroll handler. */
-      if ('onscrollend' in window) {
-        sel.addEventListener('scrollend', function () {
-          selectCenteredOption(sel);
-        });
-      } else {
-        var scrollTimer;
-        sel.addEventListener('scroll', function () {
-          clearTimeout(scrollTimer);
-          scrollTimer = setTimeout(function () {
-            selectCenteredOption(sel);
-          }, 80);
-        });
-      }
-
-      /* Centre the initial selection after the layout is known */
-      requestAnimationFrame(function () {
-        scrollToCenter(sel);
-      });
-    })();
-  </script>
 
 </body>
 </html>
