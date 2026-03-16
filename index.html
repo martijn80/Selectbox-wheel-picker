@@ -12,6 +12,47 @@
     function __wheelStep(el, lo, hi) {
       return hi > lo ? (el.scrollHeight - el.clientHeight) / (hi - lo) : 0;
     }
+
+    /* Mark option at index i as selected (aria-selected); clear the previous one. */
+    function __wheelMark(el, i) {
+      var prev = el.querySelector('[aria-selected]');
+      if (prev) prev.removeAttribute('aria-selected');
+      el.children[i].setAttribute('aria-selected', 'true');
+    }
+
+    /* Compute lo/hi/step once on init; mark the first real option and return the
+       three values so data-init can assign them to Datastar signals. */
+    function __wheelInit(el) {
+      var kids = el.children;
+      var lo = -1, hi = -1;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].dataset.value) { if (lo < 0) lo = i; hi = i; }
+      }
+      var step = __wheelStep(el, lo, hi);
+      if (lo >= 0) { __wheelMark(el, lo); }
+      return [lo, hi, step];
+    }
+
+    /* Handle a click/tap on an option div: smooth-scroll it to centre, then blur. */
+    function __wheelClick(el, lo, hi, step, evt) {
+      var opt = evt.target.closest('[data-value]');
+      if (opt) {
+        var idx = Array.prototype.indexOf.call(el.children, opt);
+        if (idx >= lo && idx <= hi) {
+          el.scrollTo({ top: (idx - lo) * step, behavior: 'smooth' });
+        }
+        el.blur();
+      }
+    }
+
+    /* Handle arrow-key navigation: move one step up or down. */
+    function __wheelKey(el, i, lo, hi, step, evt) {
+      if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
+        evt.preventDefault();
+        var delta = evt.key === 'ArrowDown' ? 1 : -1;
+        el.scrollTo({ top: (Math.min(Math.max(i + delta, lo), hi) - lo) * step, behavior: 'smooth' });
+      }
+    }
   </script>
   <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
@@ -101,15 +142,17 @@
     .wheel-selector::before { top: 0; }
     .wheel-selector::after  { bottom: 0; }
 
-    /* ── Native expanded select — base element ───────────────── */
+    /* ── Custom scroll container — replaces native <select> ─────
+       Using a plain <div> instead of <select size="5"> gives the
+       browser full control over touch-scroll physics (fling / gentle
+       swipe) on iOS and Android, where <select> listboxes do not
+       respond to swipe gestures.                                    */
     .wheel-select {
-      /* Strip native chrome */
-      appearance: none;
-      -webkit-appearance: none;
-
       /* Fill the entire .wheel-outer */
       display: block;
       width: 100%;
+      /* 5 visible rows × 40 px each */
+      height: 200px;
       border: none;
       outline: none;
       border-radius: 14px;
@@ -119,11 +162,11 @@
       font-family: inherit;
       font-size: 19px;
       color: rgba(60, 60, 67, 0.45);
-      text-align: center;
-      text-align-last: center;
 
-      /* Hide scrollbar, keep scroll */
-      overflow-y: auto;
+      /* Scrollable, touch-friendly */
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch; /* momentum scroll on iOS */
+      overscroll-behavior: contain;      /* prevent page scroll bleed */
       scrollbar-width: none;
       -ms-overflow-style: none;
 
@@ -132,9 +175,6 @@
       z-index: 1;
       cursor: pointer;
 
-      /* Two empty leading/trailing options (added in HTML) allow the first/last
-         real option to be centred without CSS padding. */
-
       /* Snap each option to the centre of the visible area */
       scroll-snap-type: y mandatory;
     }
@@ -142,28 +182,28 @@
     .wheel-select::-webkit-scrollbar { display: none; }
     .wheel-select:focus              { outline: none; }
 
-    /* ── Individual options ───────────────────────────────────── */
-    .wheel-select option {
-      text-align: center;
-      background: transparent;
-      color: rgba(60, 60, 67, 0.45);
-      font-size: 19px;
+    /* ── Individual option rows ───────────────────────────────── */
+    .wheel-option {
+      /* Each row is exactly 1/5 of the visible container height */
+      height: 40px;
+      flex-shrink: 0;
 
-      /* Snap the centre of each option to the centre of the scroll viewport */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+
+      font-size: 19px;
+      color: rgba(60, 60, 67, 0.45);
+      user-select: none;
+
+      /* Snap the centre of each row to the centre of the scroll viewport */
       scroll-snap-align: center;
     }
 
-    /* The centred (selected) item shows in full-opacity dark text.
-       font-size must NOT change here: a size jump from 19 → 22 px triggers
-       a layout reflow on every scroll tick (the scroll handler sets
-       selectedIndex continuously), causing the scroll-snap animation to
-       stutter.  Only colour and background are safe to change. */
-    .wheel-select option:checked {
+    /* The centred (selected) row shows in full-opacity dark text. */
+    .wheel-option[aria-selected] {
       color: #1c1c1e;
-      /* Use a gradient instead of a solid colour to override the UA's default
-         blue/highlight background on :checked <option> elements in Chromium,
-         while keeping the background visually transparent. */
-      background: linear-gradient(transparent, transparent);
     }
 
     /* ── Result display ──────────────────────────────────────── */
@@ -230,20 +270,38 @@
     }
 
     .css-uit .wheel-select {
-      all: revert;
+      height: auto;
+      max-height: 200px;
+      border-radius: 0;
+      overflow-y: auto;
+      scroll-snap-type: none;
+      overscroll-behavior: auto;
+      background: none;
       display: block;
       width: 70%;
       margin: 0 auto;
+      border: 1px solid #ccc;
+      cursor: default;
     }
 
     .css-uit .wheel-select::-webkit-scrollbar { display: revert; }
 
-    .css-uit .wheel-select option {
-      all: revert;
+    .css-uit .wheel-option {
+      scroll-snap-align: none;
+      height: auto;
+      padding: 2px 8px;
+      justify-content: flex-start;
+      cursor: default;
     }
 
-    .css-uit .wheel-select option:checked {
-      all: revert;
+    /* Hide the padding-only placeholder rows in plain-list mode */
+    .css-uit .wheel-option[aria-hidden] {
+      display: none;
+    }
+
+    .css-uit .wheel-option[aria-selected] {
+      background: Highlight;
+      color: HighlightText;
     }
   </style>
 </head>
@@ -254,12 +312,12 @@
                         $selected = current option value (1-based)
                         $lo, $hi  = first/last real (non-placeholder) option index
                         $step     = scroll pixels between adjacent options
-                        $i        = computed centred option index on each scroll tick
+                        $i        = computed centred option index after each wheel stop
     data-text         : reactively renders the selected label in the result area
     data-json-signals : renders all current signal values as live JSON at the bottom
 
     Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
-    plugins (e.g. data-on:scroll). Dedicated compound plugins such as
+    plugins (e.g. data-on:scrollend). Dedicated compound plugins such as
     data-on-intersect and data-on-interval keep their hyphens unchanged.
 
     Initialisation vs. scroll:
@@ -268,8 +326,9 @@
       $step depends on the element's scroll dimensions (scrollHeight, clientHeight),
       which change whenever the CSS is toggled on/off or the window is resized.
       It is therefore set in data-init and kept up-to-date by data-on-resize.
-      Only $i and $selected (which change every scroll tick) remain in data-on:scroll,
-      keeping the scroll handler as lean as possible.
+      $i and $selected are updated in data-on:scrollend (not data-on:scroll) so
+      that the scroll/snap animation runs completely free of JS work, preventing
+      stutter while the wheel is spinning.
   -->
   <div class="picker-card"
        data-signals="{selected: 1, cssAan: true, lo: 0, hi: 0, step: 0, i: 0}"
@@ -282,95 +341,78 @@
       <div class="wheel-selector" aria-hidden="true"></div>
 
       <!--
-        Native expanded select — accessible base element.
-        • size="5"            → shows exactly 5 rows; scrollable listbox
-        • Two empty non-selectable options at the start and end replace the
-          CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
-          row without relying on CSS padding (so the without-CSS mode works too).
+        Custom scroll container — replaces <select size="5">.
 
-        NOTE on Datastar visibility detection for <option> elements:
-          Datastar RC.8 includes data-on-intersect (IntersectionObserver) and
-          data-on-interval for periodic checks, but neither can observe <option>
-          elements: <option> nodes are not real CSS box-model elements, so
-          IntersectionObserver cannot track their intersection with the viewport.
-          The DOM APIs option.offsetTop / getBoundingClientRect() are likewise
-          unreliable for <option> elements across browsers.
-          Scroll-position math is therefore unavoidable; what we can do is
-          eliminate all hardcoded pixel values.
+        Why a <div>?
+          A <select> listbox does not respond to touch-swipe (fling or gentle
+          drag) on mobile browsers — iOS Safari and Android Chrome do not pass
+          touch events through to the native listbox scroll engine.  A plain
+          overflow-y:scroll <div> with scroll-snap-type lets the browser apply
+          its full native touch-scroll physics (momentum / spring snap) across
+          all platforms.
 
-        • data-init        → on first render: compute the static signals $lo, $hi
-                            and $i once (they never change), and perform the first
-                            calculation of $step (scroll pixels per option).
-                            $i is initialised to $lo so the debug panel shows the
-                            correct starting index instead of a stale 0.
+        Structure mirrors the old <select>:
+          • Two empty placeholder rows at start and end let Optie 1 / Optie 20
+            scroll to the centre without CSS padding.
+          • role="listbox" / role="option" preserve screen-reader semantics.
+          • tabindex="0" keeps keyboard focus; arrow-key handling is in
+            data-on:keydown via __wheelKey().
 
-        • data-on-resize   → recalculates $step whenever the element's rendered size
-                            changes. This covers two cases:
-                            (a) CSS toggled on/off: the "css-uit" class switches
-                                .wheel-select from a fixed-height scrollable wheel to
-                                a native "all: revert" dropdown and back, changing
-                                scrollHeight and clientHeight each time.
-                            (b) Window resize: viewport changes affect element layout.
+        • data-init        → on first render: calls __wheelInit(el) which computes
+                            $lo/$hi (first/last real row indices), $step (px per
+                            scroll step), and marks the initial aria-selected row.
+                            Signals $i and $selected are then set from the result.
 
-        • data-on:scroll   → during a fling/drag scroll: decode which index is
-                             at the centre of the visible viewport.
-                             Formula: Math.round(scrollTop / $step) + $lo
-                             Clamped to [$lo, $hi] so placeholder options are
-                             never selectable. lo, hi, step and i are stored
-                             as Datastar signals so their values are always
-                             visible and reactive. Using 'scroll' instead of
-                             'scrollend' so that the selected option updates
-                             continuously while scrolling.
+        • data-on-resize   → recalculates $step whenever layout changes
+                            (CSS toggle on/off, window resize).
 
-        • data-on:change   → fired when the user clicks or keyboard-navigates to an
-                             option without scrolling (e.g. clicking a visible but
-                             non-centred option). Programmatically setting scrollTop
-                             centres the selection, which re-fires the scroll handler
-                             to keep $i and $selected in sync.
-                             Setting selectedIndex via JavaScript does NOT fire
-                             'change', so there is no event loop.
+        • data-on:scrollend → fired once the wheel comes to rest (after the
+                             spring-snap animation completes): decode the centred
+                             row, mark it aria-selected, update $i / $selected.
+                             Using 'scrollend' instead of 'scroll' keeps the
+                             scroll/snap animation entirely free of JS work,
+                             eliminating stutter while the wheel is spinning.
 
-        • data-on:click    → after a pointer click, blur the element so the browser's
-                             native `:checked` focus-highlight (OS-level blue) is
-                             replaced by our CSS. Blur is intentionally triggered only
-                             by 'click' (not by scroll or keyboard) so that keyboard
-                             arrow-key navigation keeps focus and continues to work.
+        • data-on:click    → tap a row to smooth-scroll it to centre, then blur.
+
+        • data-on:keydown  → Up/Down arrow navigation via __wheelKey().
       -->
-      <select
+      <div
         class="wheel-select"
-        size="5"
+        role="listbox"
+        tabindex="0"
         aria-label="Kies een optie"
-        data-init="var opts = Array.from(el.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = __wheelStep(el, $lo, $hi); $i = $lo"
+        data-init="var r = __wheelInit(el); $lo = r[0]; $hi = r[1]; $step = r[2]; if ($lo >= 0 && $lo <= $hi) { $i = $lo; $selected = +el.children[$lo].dataset.value; }"
         data-on-resize="$step = __wheelStep(el, $lo, $hi)"
-        data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
-        data-on:change="var s = el; var idx = Math.min(Math.max(s.selectedIndex, $lo), $hi); s.scrollTop = (idx - $lo) * $step"
-        data-on:click="el.blur()"
+        data-on:scrollend="$i = Math.min(Math.max(Math.round(el.scrollTop / $step) + $lo, $lo), $hi); __wheelMark(el, $i); $selected = +el.children[$i].dataset.value"
+        data-on:click="__wheelClick(el, $lo, $hi, $step, evt)"
+        data-on:keydown="__wheelKey(el, $i, $lo, $hi, $step, evt)"
       >
-        <option value="" disabled aria-hidden="true"></option>
-        <option value="" disabled aria-hidden="true"></option>
-        <option value="1" selected>Optie 1</option>
-        <option value="2">Optie 2</option>
-        <option value="3">Optie 3</option>
-        <option value="4">Optie 4</option>
-        <option value="5">Optie 5</option>
-        <option value="6">Optie 6</option>
-        <option value="7">Optie 7</option>
-        <option value="8">Optie 8</option>
-        <option value="9">Optie 9</option>
-        <option value="10">Optie 10</option>
-        <option value="11">Optie 11</option>
-        <option value="12">Optie 12</option>
-        <option value="13">Optie 13</option>
-        <option value="14">Optie 14</option>
-        <option value="15">Optie 15</option>
-        <option value="16">Optie 16</option>
-        <option value="17">Optie 17</option>
-        <option value="18">Optie 18</option>
-        <option value="19">Optie 19</option>
-        <option value="20">Optie 20</option>
-        <option value="" disabled aria-hidden="true"></option>
-        <option value="" disabled aria-hidden="true"></option>
-      </select>
+        <div class="wheel-option" aria-hidden="true"></div>
+        <div class="wheel-option" aria-hidden="true"></div>
+        <div class="wheel-option" role="option" data-value="1">Optie 1</div>
+        <div class="wheel-option" role="option" data-value="2">Optie 2</div>
+        <div class="wheel-option" role="option" data-value="3">Optie 3</div>
+        <div class="wheel-option" role="option" data-value="4">Optie 4</div>
+        <div class="wheel-option" role="option" data-value="5">Optie 5</div>
+        <div class="wheel-option" role="option" data-value="6">Optie 6</div>
+        <div class="wheel-option" role="option" data-value="7">Optie 7</div>
+        <div class="wheel-option" role="option" data-value="8">Optie 8</div>
+        <div class="wheel-option" role="option" data-value="9">Optie 9</div>
+        <div class="wheel-option" role="option" data-value="10">Optie 10</div>
+        <div class="wheel-option" role="option" data-value="11">Optie 11</div>
+        <div class="wheel-option" role="option" data-value="12">Optie 12</div>
+        <div class="wheel-option" role="option" data-value="13">Optie 13</div>
+        <div class="wheel-option" role="option" data-value="14">Optie 14</div>
+        <div class="wheel-option" role="option" data-value="15">Optie 15</div>
+        <div class="wheel-option" role="option" data-value="16">Optie 16</div>
+        <div class="wheel-option" role="option" data-value="17">Optie 17</div>
+        <div class="wheel-option" role="option" data-value="18">Optie 18</div>
+        <div class="wheel-option" role="option" data-value="19">Optie 19</div>
+        <div class="wheel-option" role="option" data-value="20">Optie 20</div>
+        <div class="wheel-option" aria-hidden="true"></div>
+        <div class="wheel-option" aria-hidden="true"></div>
+      </div>
     </div>
 
     <!-- data-text evaluates the expression and writes it as text content -->
