@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>iOS Wheel Picker</title>
-  <script type="module" src="datastar.js"></script>
+  <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -235,10 +235,14 @@
 <body>
 
   <!--
-    data-signals : declares reactive state
-                   $selected = current option value (1-based)
-    data-on-change: Datastar updates $selected when the user picks an option (evt is the DOM event)
-    data-text    : reactively renders the selected label in the result area
+    data-signals  : declares reactive state
+                    $selected = current option value (1-based)
+    data-on:change: Datastar updates $selected when the user picks an option (evt is the DOM event)
+    data-text     : reactively renders the selected label in the result area
+
+    Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
+    plugins (e.g. data-on:change, data-on:scrollend). Dedicated compound plugins such as
+    data-on-intersect and data-on-interval keep their hyphens unchanged.
   -->
   <div class="picker-card"
        data-signals="{selected: 1, cssAan: true}"
@@ -257,17 +261,17 @@
           CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
           row without relying on CSS padding (so the without-CSS mode works too).
 
-        NOTE on CSS/Datastar visibility detection:
-          There is no CSS pseudo-selector (e.g. :visible) for which <option>
-          elements are currently in a scroll viewport. <option> elements are
-          not real CSS box-model nodes, so IntersectionObserver (and
-          Datastar's data-on-intersect) cannot observe them either.
+        NOTE on Datastar visibility detection for <option> elements:
+          Datastar RC.8 includes data-on-intersect (IntersectionObserver) and
+          data-on-interval for periodic checks, but neither can observe <option>
+          elements: <option> nodes are not real CSS box-model elements, so
+          IntersectionObserver cannot track their intersection with the viewport.
           The DOM APIs option.offsetTop / getBoundingClientRect() are likewise
           unreliable for <option> elements across browsers.
           Scroll-position math is therefore unavoidable; what we can do is
           eliminate all hardcoded pixel values.
 
-        • data-on-change      → on keyboard/click selection: update $selected and
+        • data-on:change      → on keyboard/click selection: update $selected and
                                 snap scrollTop so the chosen option is centred.
                                 step = (scrollHeight − clientHeight) / (hi − lo)
                                      = the scroll distance between the positions
@@ -279,7 +283,7 @@
                                       found via findIndex on the actual options.
                                 hi  = last real option index via findLastIndex.
                                 Centering formula: (selectedIndex − lo) × step
-        • data-on-scrollend   → after a fling/drag scroll: decode which index is
+        • data-on:scrollend   → after a fling/drag scroll: decode which index is
                                 at the centre of the visible viewport.
                                 Formula: Math.round(scrollTop / step) + lo
                                 Clamped to [lo, hi] so placeholder options are
@@ -290,8 +294,8 @@
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on-change="$selected = +evt.target.value; var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); s.scrollTop = (s.selectedIndex - lo) * step"
-        data-on-scrollend="var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); var i = Math.min(Math.max(Math.round(s.scrollTop / step) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value; s.scrollTo({ top: (i - lo) * step, behavior: 'smooth' })"
+        data-on:change="$selected = +evt.target.value; var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); s.scrollTop = (s.selectedIndex - lo) * step"
+        data-on:scrollend="var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); var i = Math.min(Math.max(Math.round(s.scrollTop / step) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value; s.scrollTo({ top: (i - lo) * step, behavior: 'smooth' })"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
@@ -330,7 +334,7 @@
       <input
         type="checkbox"
         checked
-        data-on-change="$cssAan = evt.target.checked"
+        data-on:change="$cssAan = evt.target.checked"
       />
       CSS inschakelen
     </label>
