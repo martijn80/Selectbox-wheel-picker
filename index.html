@@ -20,11 +20,24 @@
       el.children[i].setAttribute('aria-selected', 'true');
     }
 
+    /* Compute lo/hi/step once on init; mark the first real option and return the
+       three values so data-init can assign them to Datastar signals. */
+    function __wheelInit(el) {
+      var kids = el.children;
+      var lo = -1, hi = -1;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].dataset.value) { if (lo < 0) lo = i; hi = i; }
+      }
+      var step = __wheelStep(el, lo, hi);
+      if (lo >= 0) { __wheelMark(el, lo); }
+      return [lo, hi, step];
+    }
+
     /* Handle a click/tap on an option div: smooth-scroll it to centre, then blur. */
     function __wheelClick(el, lo, hi, step, evt) {
       var opt = evt.target.closest('[data-value]');
       if (opt) {
-        var idx = Array.from(el.children).indexOf(opt);
+        var idx = Array.prototype.indexOf.call(el.children, opt);
         if (idx >= lo && idx <= hi) {
           el.scrollTo({ top: (idx - lo) * step, behavior: 'smooth' });
         }
@@ -345,9 +358,10 @@
           • tabindex="0" keeps keyboard focus; arrow-key handling is in
             data-on:keydown via __wheelKey().
 
-        • data-init        → on first render: compute $lo, $hi (indices of the
-                            first/last real row), $step (px per scroll step),
-                            $i and $selected; mark the initial row aria-selected.
+        • data-init        → on first render: calls __wheelInit(el) which computes
+                            $lo/$hi (first/last real row indices), $step (px per
+                            scroll step), and marks the initial aria-selected row.
+                            Signals $i and $selected are then set from the result.
 
         • data-on-resize   → recalculates $step whenever layout changes
                             (CSS toggle on/off, window resize).
@@ -368,7 +382,7 @@
         role="listbox"
         tabindex="0"
         aria-label="Kies een optie"
-        data-init="var kids = Array.from(el.children); $lo = kids.findIndex(function(d) { return d.dataset.value; }); $hi = kids.findLastIndex(function(d) { return d.dataset.value; }); $step = __wheelStep(el, $lo, $hi); if ($lo >= 0 && $lo <= $hi) { $i = $lo; $selected = +el.children[$lo].dataset.value; __wheelMark(el, $lo); }"
+        data-init="var r = __wheelInit(el); $lo = r[0]; $hi = r[1]; $step = r[2]; if ($lo >= 0 && $lo <= $hi) { $i = $lo; $selected = +el.children[$lo].dataset.value; }"
         data-on-resize="$step = __wheelStep(el, $lo, $hi)"
         data-on:scrollend="$i = Math.min(Math.max(Math.round(el.scrollTop / $step) + $lo, $lo), $hi); __wheelMark(el, $i); $selected = +el.children[$i].dataset.value"
         data-on:click="__wheelClick(el, $lo, $hi, $step, evt)"
