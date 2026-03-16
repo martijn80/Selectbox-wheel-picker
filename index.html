@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>iOS Wheel Picker</title>
+  <script>
+    /* Helper called from both data-init and data-on-resize so the $step formula
+       lives in one place. ResizeObserver (used by data-on-resize) fires once on
+       initial observation, but data-init still runs first and sets $step
+       synchronously — avoiding any race window where $step would be 0. */
+    function __wheelStep(el, lo, hi) {
+      return hi > lo ? (el.scrollHeight - el.clientHeight) / (hi - lo) : 0;
+    }
+  </script>
   <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
     *, *::before, *::after {
@@ -262,6 +271,15 @@
     Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
     plugins (e.g. data-on:scroll). Dedicated compound plugins such as
     data-on-intersect and data-on-interval keep their hyphens unchanged.
+
+    Initialisation vs. scroll:
+      $lo and $hi are truly static (they depend only on the option list, which never
+      changes) and are therefore computed once in data-init.
+      $step depends on the element's scroll dimensions (scrollHeight, clientHeight),
+      which change whenever the CSS is toggled on/off or the window is resized.
+      It is therefore set in data-init and kept up-to-date by data-on-resize.
+      Only $i and $selected (which change every scroll tick) remain in data-on:scroll,
+      keeping the scroll handler as lean as possible.
   -->
   <div class="picker-card"
        data-signals="{selected: 1, cssAan: true, lo: 0, hi: 0, step: 0, i: 0}"
@@ -290,21 +308,35 @@
           Scroll-position math is therefore unavoidable; what we can do is
           eliminate all hardcoded pixel values.
 
-        • data-on:scroll      → during a fling/drag scroll: decode which index is
-                                at the centre of the visible viewport.
-                                Formula: Math.round(scrollTop / $step) + $lo
-                                Clamped to [$lo, $hi] so placeholder options are
-                                never selectable. lo, hi, step and i are stored
-                                as Datastar signals so their values are always
-                                visible and reactive. Using 'scroll' instead of
-                                'scrollend' so that the selected option updates
-                                continuously while scrolling.
+        • data-init        → on first render: compute the static signals $lo and $hi
+                            once (they never change), and perform the first calculation
+                            of $step (scroll pixels per option).
+
+        • data-on-resize   → recalculates $step whenever the element's rendered size
+                            changes. This covers two cases:
+                            (a) CSS toggled on/off: the "css-uit" class switches
+                                .wheel-select from a fixed-height scrollable wheel to
+                                a native "all: revert" dropdown and back, changing
+                                scrollHeight and clientHeight each time.
+                            (b) Window resize: viewport changes affect element layout.
+
+        • data-on:scroll   → during a fling/drag scroll: decode which index is
+                             at the centre of the visible viewport.
+                             Formula: Math.round(scrollTop / $step) + $lo
+                             Clamped to [$lo, $hi] so placeholder options are
+                             never selectable. lo, hi, step and i are stored
+                             as Datastar signals so their values are always
+                             visible and reactive. Using 'scroll' instead of
+                             'scrollend' so that the selected option updates
+                             continuously while scrolling.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on:scroll="var s = evt.target; var opts = Array.from(s.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = (s.scrollHeight - s.clientHeight) / ($hi - $lo); $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
+        data-init="var opts = Array.from(el.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = __wheelStep(el, $lo, $hi)"
+        data-on-resize="$step = __wheelStep(el, $lo, $hi)"
+        data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
