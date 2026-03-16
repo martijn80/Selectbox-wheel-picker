@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>iOS Wheel Picker</title>
-  <script type="module" src="datastar.js"></script>
+  <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -238,10 +238,14 @@
 <body>
 
   <!--
-    data-signals : declares reactive state
-                   $selected = current option value (1-based)
-    data-on-change: Datastar updates $selected when the user picks an option (evt is the DOM event)
-    data-text    : reactively renders the selected label in the result area
+    data-signals  : declares reactive state
+                    $selected = current option value (1-based)
+    data-on:change: Datastar updates $selected when the user picks an option (evt is the DOM event)
+    data-text     : reactively renders the selected label in the result area
+
+    Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
+    plugins (e.g. data-on:change, data-on:scrollend). Dedicated compound plugins such as
+    data-on-intersect and data-on-interval keep their hyphens unchanged.
   -->
   <div class="picker-card"
        data-signals="{selected: 1, cssAan: true}"
@@ -259,29 +263,42 @@
         • Two empty non-selectable options at the start and end replace the
           CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
           row without relying on CSS padding (so the without-CSS mode works too).
-        • data-on-change      → on keyboard/click selection: update $selected and
+
+        NOTE on Datastar visibility detection for <option> elements:
+          Datastar RC.8 includes data-on-intersect (IntersectionObserver) and
+          data-on-interval for periodic checks, but neither can observe <option>
+          elements: <option> nodes are not real CSS box-model elements, so
+          IntersectionObserver cannot track their intersection with the viewport.
+          The DOM APIs option.offsetTop / getBoundingClientRect() are likewise
+          unreliable for <option> elements across browsers.
+          Scroll-position math is therefore unavoidable; what we can do is
+          eliminate all hardcoded pixel values.
+
+        • data-on:change      → on keyboard/click selection: update $selected and
                                 snap scrollTop so the chosen option is centred.
-                                optH (= scrollHeight / options.length) is derived
-                                at runtime, so it works at any rendered item height.
-        • data-on-scrollend     → fires once, after scrolling AND CSS scroll-snap
-                                have fully settled — no debounce needed.
-                                Reads the final scrollTop to determine which index
-                                is at the centre of the 5-visible-row viewport.
-                                Formula: Math.round(scrollTop / optH) + 2
-                                  +2  = the 2 empty leading options; at scrollTop=0
-                                        option index 2 (Optie 1) is at the centre.
-                                Clamped to [2, options.length - 3] where -3 accounts
-                                for the 2 empty trailing options plus 0-based indexing
-                                (last real option = total - 1 - 2 trailing = total - 3).
-                                The snap position is already final when scrollend fires,
-                                so no extra scrollTo() call is required.
+                                step = (scrollHeight − clientHeight) / (hi − lo)
+                                     = the scroll distance between the positions
+                                       where the first and last real option are
+                                       centred, divided by the number of steps.
+                                       Derived entirely from the DOM scroll range;
+                                       no hardcoded pixel values.
+                                lo  = first real (non-placeholder) option index
+                                      found via findIndex on the actual options.
+                                hi  = last real option index via findLastIndex.
+                                Centering formula: (selectedIndex − lo) × step
+        • data-on:scrollend   → after a fling/drag scroll: decode which index is
+                                at the centre of the visible viewport.
+                                Formula: Math.round(scrollTop / step) + lo
+                                Clamped to [lo, hi] so placeholder options are
+                                never selectable. Both lo, hi and step are read
+                                from the live DOM — no magic numbers anywhere.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on-change="$selected = +evt.target.value; var optH = evt.target.scrollHeight / evt.target.options.length; evt.target.scrollTop = (evt.target.selectedIndex - 2) * optH"
-        data-on-scrollend="var optH = evt.target.scrollHeight / evt.target.options.length; var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / optH) + 2, 2), evt.target.options.length - 3); evt.target.selectedIndex = idx; $selected = +evt.target.options[idx].value"
+        data-on:change="$selected = +evt.target.value; var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); s.scrollTop = (s.selectedIndex - lo) * step"
+        data-on:scrollend="var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); var i = Math.min(Math.max(Math.round(s.scrollTop / step) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value; s.scrollTo({ top: (i - lo) * step, behavior: 'smooth' })"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
@@ -320,7 +337,7 @@
       <input
         type="checkbox"
         checked
-        data-on-change="$cssAan = evt.target.checked"
+        data-on:change="$cssAan = evt.target.checked"
       />
       ios wheel picker style
     </label>
