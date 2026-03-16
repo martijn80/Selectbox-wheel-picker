@@ -262,6 +262,13 @@
     Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
     plugins (e.g. data-on:scroll). Dedicated compound plugins such as
     data-on-intersect and data-on-interval keep their hyphens unchanged.
+
+    Initialisation vs. scroll:
+      $lo, $hi and $step are static for the lifetime of the picker — they depend only
+      on the option list and element dimensions, which are fixed at load time.
+      They are therefore computed once via data-init and are never recalculated inside
+      the scroll handler.  Only $i and $selected (which change every tick) remain in
+      data-on:scroll, keeping the scroll handler as lean as possible.
   -->
   <div class="picker-card"
        data-signals="{selected: 1, cssAan: true, lo: 0, hi: 0, step: 0, i: 0}"
@@ -290,21 +297,28 @@
           Scroll-position math is therefore unavoidable; what we can do is
           eliminate all hardcoded pixel values.
 
-        • data-on:scroll      → during a fling/drag scroll: decode which index is
-                                at the centre of the visible viewport.
-                                Formula: Math.round(scrollTop / $step) + $lo
-                                Clamped to [$lo, $hi] so placeholder options are
-                                never selectable. lo, hi, step and i are stored
-                                as Datastar signals so their values are always
-                                visible and reactive. Using 'scroll' instead of
-                                'scrollend' so that the selected option updates
-                                continuously while scrolling.
+        • data-init        → on first render: compute the static signals $lo, $hi
+                            and $step once so the scroll handler stays lean.
+                            $lo / $hi are derived from the option list (never changes).
+                            $step is (scrollHeight − clientHeight) / ($hi − $lo) and
+                            depends only on element dimensions (fixed at load time).
+
+        • data-on:scroll   → during a fling/drag scroll: decode which index is
+                             at the centre of the visible viewport.
+                             Formula: Math.round(scrollTop / $step) + $lo
+                             Clamped to [$lo, $hi] so placeholder options are
+                             never selectable. lo, hi, step and i are stored
+                             as Datastar signals so their values are always
+                             visible and reactive. Using 'scroll' instead of
+                             'scrollend' so that the selected option updates
+                             continuously while scrolling.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on:scroll="var s = evt.target; var opts = Array.from(s.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = (s.scrollHeight - s.clientHeight) / ($hi - $lo); $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
+        data-init="var opts = Array.from(el.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = ($hi > $lo) ? (el.scrollHeight - el.clientHeight) / ($hi - $lo) : 0"
+        data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
