@@ -21,11 +21,6 @@
       padding: 0;
     }
 
-     /* ── Item height — single source of truth for all wheel dimensions.
-        (CSS custom properties are not accessible from HTML attributes; the
-         item height is derived dynamically in JS via scrollHeight / options.length.) */
-    :root { --item-h: 44px; }
-
     body {
       display: flex;
       align-items: center;
@@ -56,7 +51,6 @@
     /* ── Outer wheel wrapper — clips overflow, stacking context ── */
     .wheel-outer {
       position: relative;
-      height: calc(var(--item-h) * 5); /* 5 visible rows */
       border-radius: 14px;
       overflow: hidden;
       background: #f9f9fb;
@@ -67,7 +61,7 @@
       content: '';
       position: absolute;
       inset: 0 0 auto 0;
-      height: calc(var(--item-h) * 2); /* 2 × item height */
+      height: 40%; /* top 2 of 5 visible rows */
       background: linear-gradient(to bottom, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
@@ -78,7 +72,7 @@
       content: '';
       position: absolute;
       inset: auto 0 0 0;
-      height: calc(var(--item-h) * 2);
+      height: 40%; /* bottom 2 of 5 visible rows */
       background: linear-gradient(to top, #f9f9fb 0%, transparent 100%);
       pointer-events: none;
       z-index: 2;
@@ -89,7 +83,7 @@
       position: absolute;
       top: 50%;
       inset-inline: 0;
-      height: var(--item-h);
+      height: 20%; /* centre 1 of 5 visible rows */
       transform: translateY(-50%);
       pointer-events: none;
       z-index: 3;
@@ -116,7 +110,6 @@
       /* Fill the entire .wheel-outer */
       display: block;
       width: 100%;
-      height: 100%;
       border: none;
       outline: none;
       border-radius: 14px;
@@ -151,11 +144,6 @@
 
     /* ── Individual options ───────────────────────────────────── */
     .wheel-select option {
-      /* Each option renders at exactly --item-h (44 px: 12px padding-top + 20px line-height + 12px padding-bottom).
-         line-height must be set explicitly; the browser default (~1.2×) would
-         make options ~47 px tall and cause uneven scroll snapping. */
-      padding: 12px 0;
-      line-height: 20px; /* 12 + 20 + 12 = 44 px exactly */
       text-align: center;
       background: transparent;
       color: rgba(60, 60, 67, 0.45);
@@ -165,11 +153,13 @@
       scroll-snap-align: center;
     }
 
-    /* iOS: the centred (selected) item is bold and full-opacity */
+    /* The centred (selected) item shows in full-opacity dark text.
+       font-size must NOT change here: a size jump from 19 → 22 px triggers
+       a layout reflow on every scroll tick (the scroll handler sets
+       selectedIndex continuously), causing the scroll-snap animation to
+       stutter.  Only colour and background are safe to change. */
     .wheel-select option:checked {
       color: #1c1c1e;
-      font-size: 22px;
-      font-weight: 600;
       /* Use a gradient instead of a solid colour to override the UA's default
          blue/highlight background on :checked <option> elements in Chromium,
          while keeping the background visually transparent. */
