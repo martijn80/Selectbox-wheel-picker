@@ -180,6 +180,19 @@
       font-weight: 600;
     }
 
+    /* ── Signal debug ────────────────────────────────────────── */
+    .signals-debug {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: #f2f2f7;
+      border-radius: 10px;
+      font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
+      color: #3c3c43;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
     /* ── CSS-toggle ───────────────────────────────────────────── */
     .css-toggle {
       display: flex;
@@ -238,17 +251,20 @@
 <body>
 
   <!--
-    data-signals  : declares reactive state
-                    $selected = current option value (1-based)
-    data-on:change: Datastar updates $selected when the user picks an option (evt is the DOM event)
-    data-text     : reactively renders the selected label in the result area
+    data-signals      : declares reactive state
+                        $selected = current option value (1-based)
+                        $lo, $hi  = first/last real (non-placeholder) option index
+                        $step     = scroll pixels between adjacent options
+                        $i        = computed centred option index on each scroll tick
+    data-text         : reactively renders the selected label in the result area
+    data-json-signals : renders all current signal values as live JSON at the bottom
 
     Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
-    plugins (e.g. data-on:change, data-on:scroll). Dedicated compound plugins such as
+    plugins (e.g. data-on:scroll). Dedicated compound plugins such as
     data-on-intersect and data-on-interval keep their hyphens unchanged.
   -->
   <div class="picker-card"
-       data-signals="{selected: 1, cssAan: true}"
+       data-signals="{selected: 1, cssAan: true, lo: 0, hi: 0, step: 0, i: 0}"
        data-class='{"css-uit": !$cssAan}'>
 
     <p class="picker-title">Kies een optie</p>
@@ -274,34 +290,21 @@
           Scroll-position math is therefore unavoidable; what we can do is
           eliminate all hardcoded pixel values.
 
-        • data-on:change      → on keyboard/click selection: update $selected and
-                                snap scrollTop so the chosen option is centred.
-                                step = (scrollHeight − clientHeight) / (hi − lo)
-                                     = the scroll distance between the positions
-                                       where the first and last real option are
-                                       centred, divided by the number of steps.
-                                       Derived entirely from the DOM scroll range;
-                                       no hardcoded pixel values.
-                                lo  = first real (non-placeholder) option index
-                                      found via findIndex on the actual options.
-                                hi  = last real option index via findLastIndex.
-                                Centering formula: (selectedIndex − lo) × step
         • data-on:scroll      → during a fling/drag scroll: decode which index is
                                 at the centre of the visible viewport.
-                                Formula: Math.round(scrollTop / step) + lo
-                                Clamped to [lo, hi] so placeholder options are
-                                never selectable. Both lo, hi and step are read
-                                from the live DOM — no magic numbers anywhere.
-                                Using 'scroll' instead of 'scrollend' so that
-                                the selected option updates continuously while
-                                scrolling, not only after scrolling has stopped.
+                                Formula: Math.round(scrollTop / $step) + $lo
+                                Clamped to [$lo, $hi] so placeholder options are
+                                never selectable. lo, hi, step and i are stored
+                                as Datastar signals so their values are always
+                                visible and reactive. Using 'scroll' instead of
+                                'scrollend' so that the selected option updates
+                                continuously while scrolling.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
-        data-on:change="$selected = +evt.target.value; var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); s.scrollTop = (s.selectedIndex - lo) * step"
-        data-on:scroll="var s = evt.target; var opts = Array.from(s.options); var lo = opts.findIndex(function(o) { return o.value; }); var hi = opts.findLastIndex(function(o) { return o.value; }); var step = (s.scrollHeight - s.clientHeight) / (hi - lo); var i = Math.min(Math.max(Math.round(s.scrollTop / step) + lo, lo), hi); s.selectedIndex = i; $selected = +s.options[i].value"
+        data-on:scroll="var s = evt.target; var opts = Array.from(s.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = (s.scrollHeight - s.clientHeight) / ($hi - $lo); $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
@@ -344,6 +347,10 @@
       />
       ios wheel picker style
     </label>
+
+    <!-- Live signal inspector — data-json-signals writes all current signal
+         values as pretty-printed JSON into this element's textContent -->
+    <pre class="signals-debug" data-json-signals></pre>
 
   </div>
 
