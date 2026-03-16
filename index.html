@@ -219,6 +219,9 @@
 
     .css-uit .wheel-select {
       all: revert;
+      display: block;
+      width: 70%;
+      margin: 0 auto;
     }
 
     .css-uit .wheel-select::-webkit-scrollbar { display: revert; }
@@ -260,21 +263,23 @@
                                 snap scrollTop so the chosen option is centred.
                                 optH (= scrollHeight / options.length) is derived
                                 at runtime, so it works at any rendered item height.
-        • data-on-scrollend   → after a fling/drag scroll: determine which index
-                                is at the centre of the 5-visible-row viewport.
+        • data-on-scroll        → debounced 150 ms after the last scroll event:
+          (debounce.150ms)        determine which index is at the centre of the
+                                5-visible-row viewport and snap instantly.
                                 Formula: Math.round(scrollTop / optH) + 2
                                   +2  = the 2 empty leading options; at scrollTop=0
                                         option index 2 (Optie 1) is at the centre.
                                 Clamped to [2, options.length - 3] where -3 accounts
                                 for the 2 empty trailing options plus 0-based indexing
                                 (last real option = total - 1 - 2 trailing = total - 3).
+                                Using 'instant' snap avoids re-triggering scroll events.
       -->
       <select
         class="wheel-select"
         size="5"
         aria-label="Kies een optie"
         data-on-change="$selected = +evt.target.value; var optH = evt.target.scrollHeight / evt.target.options.length; evt.target.scrollTop = (evt.target.selectedIndex - 2) * optH"
-        data-on-scrollend="var optH = evt.target.scrollHeight / evt.target.options.length; var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / optH) + 2, 2), evt.target.options.length - 3); evt.target.selectedIndex = idx; $selected = +evt.target.options[idx].value; evt.target.scrollTo({top: (idx - 2) * optH, behavior: 'smooth'})"
+        data-on-scroll__debounce.150ms="var optH = evt.target.scrollHeight / evt.target.options.length; var idx = Math.min(Math.max(Math.round(evt.target.scrollTop / optH) + 2, 2), evt.target.options.length - 3); evt.target.selectedIndex = idx; $selected = +evt.target.options[idx].value; evt.target.scrollTo({top: (idx - 2) * optH, behavior: 'instant'})"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
@@ -315,7 +320,7 @@
         checked
         data-on-change="$cssAan = evt.target.checked"
       />
-      CSS inschakelen
+      ios wheel picker style
     </label>
 
   </div>
