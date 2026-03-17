@@ -12,6 +12,35 @@
     function __wheelStep(el, lo, hi) {
       return hi > lo ? (el.scrollHeight - el.clientHeight) / (hi - lo) : 0;
     }
+
+    /* Apply graduated text-color opacity to options based on their distance
+       from the centered (selected) option:
+         distance 0  → fully opaque  (selected)
+         distance 1  → 80 % opacity  (20 % transparent)
+         distance 2  → 40 % opacity  (60 % transparent)
+         distance > 2 → cleared (falls back to CSS value)               */
+    function __updateOptionColors(select, selectedIdx) {
+      Array.from(select.options).forEach(function(opt, i) {
+        var dist = Math.abs(i - selectedIdx);
+        if (dist === 0) {
+          opt.style.color = '#1c1c1e';
+        } else if (dist === 1) {
+          opt.style.color = 'rgba(60, 60, 67, 0.8)';
+        } else if (dist === 2) {
+          opt.style.color = 'rgba(60, 60, 67, 0.4)';
+        } else {
+          opt.style.color = '';
+        }
+      });
+    }
+
+    /* Remove all inline color overrides (used when the CSS wheel style is
+       disabled so the native select renders without any forced colors).   */
+    function __clearOptionColors(select) {
+      Array.from(select.options).forEach(function(opt) {
+        opt.style.color = '';
+      });
+    }
   </script>
   <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
@@ -335,6 +364,11 @@
                              replaced by our CSS. Blur is intentionally triggered only
                              by 'click' (not by scroll or keyboard) so that keyboard
                              arrow-key navigation keeps focus and continues to work.
+
+        • data-effect      → re-runs whenever $i or $cssAan changes; applies graduated
+                             text-color opacity to each option based on its distance
+                             from the selected index (±1 → 80 %, ±2 → 40 %).
+                             Clears inline colors when the CSS wheel style is disabled.
       -->
       <select
         class="wheel-select"
@@ -345,6 +379,7 @@
         data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
         data-on:change="var s = el; var idx = Math.min(Math.max(s.selectedIndex, $lo), $hi); s.scrollTop = (idx - $lo) * $step"
         data-on:click="el.blur()"
+        data-effect="$cssAan ? __updateOptionColors(el, $i) : __clearOptionColors(el)"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
