@@ -3,7 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Selectbox</title>
+  <title>iOS Wheel Picker</title>
+  <script>
+    /* Helper called from both data-init and data-on-resize so the $step formula
+       lives in one place. ResizeObserver (used by data-on-resize) fires once on
+       initial observation, but data-init still runs first and sets $step
+       synchronously — avoiding any race window where $step would be 0. */
+    function __wheelStep(el, lo, hi) {
+      return hi > lo ? (el.scrollHeight - el.clientHeight) / (hi - lo) : 0;
+    }
+
+    /* Apply graduated text-color opacity to options based on their distance
+       from the centered (selected) option:
+         distance 0  → fully opaque  (selected)
+         distance 1  → 80 % opacity  (20 % transparent)
+         distance 2  → 40 % opacity  (60 % transparent)
+         distance > 2 → cleared (falls back to CSS value)               */
+    function __updateOptionColors(select, selectedIdx) {
+      Array.from(select.options).forEach(function(opt, i) {
+        var dist = Math.abs(i - selectedIdx);
+        if (dist === 0) {
+          opt.style.color = '#1c1c1e';
+        } else if (dist === 1) {
+          opt.style.color = 'rgba(60, 60, 67, 0.8)';
+        } else if (dist === 2) {
+          opt.style.color = 'rgba(60, 60, 67, 0.4)';
+        } else {
+          opt.style.color = '';
+        }
+      });
+    }
+
+    /* Remove all inline color overrides (used when the CSS wheel style is
+       disabled so the native select renders without any forced colors).   */
+    function __clearOptionColors(select) {
+      Array.from(select.options).forEach(function(opt) {
+        opt.style.color = '';
+      });
+    }
+  </script>
   <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
   <style>
     *, *::before, *::after {
@@ -39,29 +77,122 @@
       margin-bottom: 20px;
     }
 
-    /* ── Native select ────────────────────────────────────────── */
-    .native-select {
+    /* ── Outer wheel wrapper — clips overflow, stacking context ── */
+    .wheel-outer {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f9f9fb;
+    }
+
+    /* Gradient fade — top (sits above the select via z-index) */
+    .wheel-outer::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 40%; /* top 2 of 5 visible rows */
+      background: linear-gradient(to bottom, #f9f9fb 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Gradient fade — bottom */
+    .wheel-outer::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 40%; /* bottom 2 of 5 visible rows */
+      background: linear-gradient(to top, #f9f9fb 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ── Hairline selection indicator at the centre ──────────── */
+    .wheel-selector {
+      position: absolute;
+      top: 50%;
+      inset-inline: 0;
+      height: 20%; /* centre 1 of 5 visible rows */
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .wheel-selector::before,
+    .wheel-selector::after {
+      content: '';
+      position: absolute;
+      inset-inline: 16px;
+      height: 0.5px;
+      background: #c6c6c8;
+    }
+
+    .wheel-selector::before { top: 0; }
+    .wheel-selector::after  { bottom: 0; }
+
+    /* ── Native expanded select — base element ───────────────── */
+    .wheel-select {
+      /* Strip native chrome */
+      appearance: none;
+      -webkit-appearance: none;
+
+      /* Fill the entire .wheel-outer */
       display: block;
       width: 100%;
+      border: none;
+      outline: none;
+      border-radius: 14px;
+      background: transparent;
+
+      /* Typography */
       font-family: inherit;
-      font-size: 15px;
-      color: #3c3c43;
+      font-size: 19px;
+      color: rgba(60, 60, 67, 0.45);
       text-align: center;
       text-align-last: center;
-      background: #f2f2f7;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      padding: 6px 8px;
+
+      /* Hide scrollbar, keep scroll */
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      /* Below the overlays */
+      position: relative;
+      z-index: 1;
       cursor: pointer;
+
+      /* Two empty leading/trailing options (added in HTML) allow the first/last
+         real option to be centred without CSS padding. */
+
+      /* Snap each option to the centre of the visible area */
+      scroll-snap-type: y mandatory;
     }
 
-    .native-select:focus {
-      outline: none;
-    }
+    .wheel-select::-webkit-scrollbar { display: none; }
+    .wheel-select:focus              { outline: none; }
 
-    .native-select option {
+    /* ── Individual options ───────────────────────────────────── */
+    .wheel-select option {
       text-align: center;
-      background: #f2f2f7;
+      background: transparent;
+      color: rgba(60, 60, 67, 0.45);
+      font-size: 19px;
+
+      /* Snap the centre of each option to the centre of the scroll viewport */
+      scroll-snap-align: center;
+    }
+
+    /* The centred (selected) item shows in full-opacity dark text.
+       font-size must NOT change here: a size jump from 19 → 22 px triggers
+       a layout reflow on every scroll tick (the scroll handler sets
+       selectedIndex continuously), causing the scroll-snap animation to
+       stutter.  Only colour and background are safe to change. */
+    .wheel-select option:checked {
+      color: #1c1c1e;
+      /* Use a gradient instead of a solid colour to override the UA's default
+         blue/highlight background on :checked <option> elements in Chromium,
+         while keeping the background visually transparent. */
+      background: linear-gradient(transparent, transparent);
     }
 
     /* ── Result display ──────────────────────────────────────── */
@@ -76,46 +207,225 @@
       color: #007aff;
       font-weight: 600;
     }
+
+    /* ── Signal debug ────────────────────────────────────────── */
+    .signals-debug {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: #f2f2f7;
+      border-radius: 10px;
+      font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
+      color: #3c3c43;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* ── CSS-toggle ───────────────────────────────────────────── */
+    .css-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #3c3c43;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .css-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #007aff;
+    }
+
+    /* ── CSS uitschakelen: reset alle wheel-picker stijlen ─────── */
+    .css-uit .wheel-outer {
+      height: auto;
+      border-radius: 0;
+      overflow: visible;
+      background: none;
+    }
+
+    .css-uit .wheel-outer::before,
+    .css-uit .wheel-outer::after {
+      display: none;
+    }
+
+    .css-uit .wheel-selector {
+      display: none;
+    }
+
+    .css-uit .wheel-select {
+      all: revert;
+      display: block;
+      width: 70%;
+      margin: 0 auto;
+    }
+
+    .css-uit .wheel-select::-webkit-scrollbar { display: revert; }
+
+    .css-uit .wheel-select option {
+      all: revert;
+    }
+
+    .css-uit .wheel-select option:checked {
+      all: revert;
+    }
   </style>
 </head>
 <body>
 
+  <!--
+    data-signals      : declares reactive state
+                        $selected = current option value (1-based)
+                        $lo, $hi  = first/last real (non-placeholder) option index
+                        $step     = scroll pixels between adjacent options
+                        $i        = computed centred option index on each scroll tick
+    data-text         : reactively renders the selected label in the result area
+    data-json-signals : renders all current signal values as live JSON at the bottom
+
+    Note: since RC.6 the attribute key delimiter changed from "-" to ":" for the built-in
+    plugins (e.g. data-on:scroll). Dedicated compound plugins such as
+    data-on-intersect and data-on-interval keep their hyphens unchanged.
+
+    Initialisation vs. scroll:
+      $lo and $hi are truly static (they depend only on the option list, which never
+      changes) and are therefore computed once in data-init.
+      $step depends on the element's scroll dimensions (scrollHeight, clientHeight),
+      which change whenever the CSS is toggled on/off or the window is resized.
+      It is therefore set in data-init and kept up-to-date by data-on-resize.
+      Only $i and $selected (which change every scroll tick) remain in data-on:scroll,
+      keeping the scroll handler as lean as possible.
+  -->
   <div class="picker-card"
-       data-signals="{selected: 1}">
+       data-signals="{selected: 1, cssAan: true, lo: 0, hi: 0, step: 0, i: 0}"
+       data-class='{"css-uit": !$cssAan}'>
 
     <p class="picker-title">Kies een optie</p>
 
-    <select
-      class="native-select"
-      aria-label="Kies een optie"
-      data-on:change="$selected = +el.value"
-    >
-      <option value="1" selected>Optie 1</option>
-      <option value="2">Optie 2</option>
-      <option value="3">Optie 3</option>
-      <option value="4">Optie 4</option>
-      <option value="5">Optie 5</option>
-      <option value="6">Optie 6</option>
-      <option value="7">Optie 7</option>
-      <option value="8">Optie 8</option>
-      <option value="9">Optie 9</option>
-      <option value="10">Optie 10</option>
-      <option value="11">Optie 11</option>
-      <option value="12">Optie 12</option>
-      <option value="13">Optie 13</option>
-      <option value="14">Optie 14</option>
-      <option value="15">Optie 15</option>
-      <option value="16">Optie 16</option>
-      <option value="17">Optie 17</option>
-      <option value="18">Optie 18</option>
-      <option value="19">Optie 19</option>
-      <option value="20">Optie 20</option>
-    </select>
+    <div class="wheel-outer">
+      <!-- Hairline indicator marks the "active" centre row -->
+      <div class="wheel-selector" aria-hidden="true"></div>
+
+      <!--
+        Native expanded select — accessible base element.
+        • size="5"            → shows exactly 5 rows; scrollable listbox
+        • Two empty non-selectable options at the start and end replace the
+          CSS padding-block: they let Optie 1 / Optie 20 scroll to the centre
+          row without relying on CSS padding (so the without-CSS mode works too).
+
+        NOTE on Datastar visibility detection for <option> elements:
+          Datastar RC.8 includes data-on-intersect (IntersectionObserver) and
+          data-on-interval for periodic checks, but neither can observe <option>
+          elements: <option> nodes are not real CSS box-model elements, so
+          IntersectionObserver cannot track their intersection with the viewport.
+          The DOM APIs option.offsetTop / getBoundingClientRect() are likewise
+          unreliable for <option> elements across browsers.
+          Scroll-position math is therefore unavoidable; what we can do is
+          eliminate all hardcoded pixel values.
+
+        • data-init        → on first render: compute the static signals $lo, $hi
+                            and $i once (they never change), and perform the first
+                            calculation of $step (scroll pixels per option).
+                            $i is initialised to $lo so the debug panel shows the
+                            correct starting index instead of a stale 0.
+
+        • data-on-resize   → recalculates $step whenever the element's rendered size
+                            changes. This covers two cases:
+                            (a) CSS toggled on/off: the "css-uit" class switches
+                                .wheel-select from a fixed-height scrollable wheel to
+                                a native "all: revert" dropdown and back, changing
+                                scrollHeight and clientHeight each time.
+                            (b) Window resize: viewport changes affect element layout.
+
+        • data-on:scroll   → during a fling/drag scroll: decode which index is
+                             at the centre of the visible viewport.
+                             Formula: Math.round(scrollTop / $step) + $lo
+                             Clamped to [$lo, $hi] so placeholder options are
+                             never selectable. lo, hi, step and i are stored
+                             as Datastar signals so their values are always
+                             visible and reactive. Using 'scroll' instead of
+                             'scrollend' so that the selected option updates
+                             continuously while scrolling.
+
+        • data-on:change   → fired when the user clicks or keyboard-navigates to an
+                             option without scrolling (e.g. clicking a visible but
+                             non-centred option). Programmatically setting scrollTop
+                             centres the selection, which re-fires the scroll handler
+                             to keep $i and $selected in sync.
+                             Setting selectedIndex via JavaScript does NOT fire
+                             'change', so there is no event loop.
+
+        • data-on:click    → after a pointer click, blur the element so the browser's
+                             native `:checked` focus-highlight (OS-level blue) is
+                             replaced by our CSS. Blur is intentionally triggered only
+                             by 'click' (not by scroll or keyboard) so that keyboard
+                             arrow-key navigation keeps focus and continues to work.
+
+        • data-effect      → re-runs whenever $i or $cssAan changes; applies graduated
+                             text-color opacity to each option based on its distance
+                             from the selected index (±1 → 80 %, ±2 → 40 %).
+                             Clears inline colors when the CSS wheel style is disabled.
+      -->
+      <select
+        class="wheel-select"
+        size="5"
+        aria-label="Kies een optie"
+        data-init="var opts = Array.from(el.options); $lo = opts.findIndex(function(o) { return o.value; }); $hi = opts.findLastIndex(function(o) { return o.value; }); $step = __wheelStep(el, $lo, $hi); $i = $lo"
+        data-on-resize="$step = __wheelStep(el, $lo, $hi)"
+        data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
+        data-on:change="var s = el; var idx = Math.min(Math.max(s.selectedIndex, $lo), $hi); s.scrollTop = (idx - $lo) * $step"
+        data-on:click="el.blur()"
+        data-effect="__updateOptionColors(el, $i)"
+      >
+        <option value="" disabled aria-hidden="true"></option>
+        <option value="" disabled aria-hidden="true"></option>
+        <option value="1" selected>Optie 1</option>
+        <option value="2">Optie 2</option>
+        <option value="3">Optie 3</option>
+        <option value="4">Optie 4</option>
+        <option value="5">Optie 5</option>
+        <option value="6">Optie 6</option>
+        <option value="7">Optie 7</option>
+        <option value="8">Optie 8</option>
+        <option value="9">Optie 9</option>
+        <option value="10">Optie 10</option>
+        <option value="11">Optie 11</option>
+        <option value="12">Optie 12</option>
+        <option value="13">Optie 13</option>
+        <option value="14">Optie 14</option>
+        <option value="15">Optie 15</option>
+        <option value="16">Optie 16</option>
+        <option value="17">Optie 17</option>
+        <option value="18">Optie 18</option>
+        <option value="19">Optie 19</option>
+        <option value="20">Optie 20</option>
+        <option value="" disabled aria-hidden="true"></option>
+        <option value="" disabled aria-hidden="true"></option>
+      </select>
+    </div>
 
     <!-- data-text evaluates the expression and writes it as text content -->
     <p class="picker-result">
       Geselecteerd:&nbsp;<strong data-text="'Optie ' + $selected"></strong>
     </p>
+
+    <!-- Toggle to enable/disable the CSS styling -->
+    <label class="css-toggle">
+      <input
+        type="checkbox"
+        checked
+        data-on:change="$cssAan = evt.target.checked"
+      />
+      ios wheel picker style
+    </label>
+
+    <!-- Live signal inspector — data-json-signals writes all current signal
+         values as pretty-printed JSON into this element's textContent -->
+    <pre class="signals-debug" data-json-signals></pre>
 
   </div>
 
