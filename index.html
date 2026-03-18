@@ -379,7 +379,7 @@
         data-on:scroll="var s = evt.target; $i = Math.min(Math.max(Math.round(s.scrollTop / $step) + $lo, $lo), $hi); s.selectedIndex = $i; $selected = +s.options[$i].value"
         data-on:change="var s = el; var idx = Math.min(Math.max(s.selectedIndex, $lo), $hi); s.scrollTop = (idx - $lo) * $step"
         data-on:click="el.blur()"
-        data-effect="$cssAan ? __updateOptionColors(el, $i) : __clearOptionColors(el)"
+        data-effect="__updateOptionColors(el, $i)"
       >
         <option value="" disabled aria-hidden="true"></option>
         <option value="" disabled aria-hidden="true"></option>
