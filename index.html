@@ -74,7 +74,7 @@
                     opt.style.color = '#1c1c1e';
                 } else if (dist === 1) {
                     opt.style.color = 'rgba(60, 60, 67, 0.8)';
-                } else if (dist === 2) {
+                } else if (dist ===  2) {
                     opt.style.color = 'rgba(60, 60, 67, 0.4)';
                 } else if (dist === 3) {
                     opt.style.color = 'rgba(60, 60, 67, 0.1)';
@@ -200,13 +200,33 @@
             overflow-x: auto;
         }
 
+        .style-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .style-toggle input {
+            width: 16px;
+            height: 16px;
+        }
+
     </style>
 </head>
-<body data-signals="{firstRealOptionIndex: 0, lastRealOptionIndex: 0, scrollPixelsPerOption: 0, i: 0}">
+<body data-signals="{firstRealOptionIndex: 0, lastRealOptionIndex: 0, scrollPixelsPerOption: 0, i: 0, styleAsWheel: true}">
     <div class="picker-card">
         <p class="picker-title">Months</p>
+
+        <label class="style-toggle">
+            <input type="checkbox" data-bind="styleAsWheel" checked>
+            Style as wheel
+        </label>
+
         <select
-                class="wheel-select"
+                data-class="$styleAsWheel ? 'wheel-select' : ''"
                 size="5"
                 aria-label="Kies een optie"
                 data-bind="month"
