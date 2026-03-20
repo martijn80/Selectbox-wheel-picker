@@ -4,27 +4,27 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>iOS Wheel Picker</title>
-    <script>
-        function __scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex) {
+    <script>e
+        function _scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex) {
             return lastRealOptionIndex > firstRealOptionIndex
                 ? (select.scrollHeight - select.clientHeight) / (lastRealOptionIndex - firstRealOptionIndex)
                 : 0;
         }
 
-        function __findFirstRealOptionIndex(select) {
+        function _findFirstRealOptionIndex(select) {
             return Array.from(select.options).findIndex(function (option) {
                 return option.value;
             });
         }
 
-        function __findLastRealOptionIndex(select) {
+        function _findLastRealOptionIndex(select) {
             return Array.from(select.options).findLastIndex(function (option) {
                 return option.value;
             });
         }
 
-        function __clampCenteredOptionIndex(select, centeredOptionIndex) {
-            var wheelPicker = select.__wheelPicker;
+        function _clampCenteredOptionIndex(select, centeredOptionIndex) {
+            var wheelPicker = select._wheelPicker;
 
             return Math.min(
                 Math.max(centeredOptionIndex, wheelPicker.firstRealOptionIndex),
@@ -32,20 +32,20 @@
             );
         }
 
-        function __centeredOptionIndexFromScroll(select) {
-            var wheelPicker = select.__wheelPicker;
+        function _centeredOptionIndexFromScroll(select) {
+            var wheelPicker = select._wheelPicker;
 
             if (!wheelPicker.scrollPixelsPerOption) {
                 return wheelPicker.firstRealOptionIndex;
             }
 
-            return __clampCenteredOptionIndex(
+            return _clampCenteredOptionIndex(
                 select,
                 Math.round(select.scrollTop / wheelPicker.scrollPixelsPerOption) + wheelPicker.firstRealOptionIndex
             );
         }
 
-        function __selectedOptionLabel(select) {
+        function _selectedOptionLabel(select) {
             if (!select) {
                 return '';
             }
@@ -54,7 +54,7 @@
             return option ? option.text : '';
         }
 
-        function __syncOptionColors(select) {
+        function _syncOptionColors(select) {
             var selectedIndex = select.selectedIndex;
 
             Array.from(select.options).forEach(function (option, index) {
@@ -74,45 +74,45 @@
             });
         }
 
-        function __syncSelectionFromScroll(select) {
-            var centeredOptionIndex = __centeredOptionIndexFromScroll(select);
+        function _syncSelectionFromScroll(select) {
+            var centeredOptionIndex = _centeredOptionIndexFromScroll(select);
 
             select.selectedIndex = centeredOptionIndex;
-            __syncOptionColors(select);
+            _syncOptionColors(select);
 
             return select.value;
         }
 
-        function __syncScrollFromSelection(select) {
-            var centeredOptionIndex = __clampCenteredOptionIndex(select, select.selectedIndex);
-            var wheelPicker = select.__wheelPicker;
+        function _syncScrollFromSelection(select) {
+            var centeredOptionIndex = _clampCenteredOptionIndex(select, select.selectedIndex);
+            var wheelPicker = select._wheelPicker;
 
             select.selectedIndex = centeredOptionIndex;
             select.scrollTop = (centeredOptionIndex - wheelPicker.firstRealOptionIndex) * wheelPicker.scrollPixelsPerOption;
-            __syncOptionColors(select);
+            _syncOptionColors(select);
         }
 
-        function __recalculateWheelPicker(select) {
-            var wheelPicker = select.__wheelPicker;
+        function _recalculateWheelPicker(select) {
+            var wheelPicker = select._wheelPicker;
 
-            wheelPicker.scrollPixelsPerOption = __scrollPixelsPerOption(
+            wheelPicker.scrollPixelsPerOption = _scrollPixelsPerOption(
                 select,
                 wheelPicker.firstRealOptionIndex,
                 wheelPicker.lastRealOptionIndex
             );
         }
 
-        function __initializeWheelPicker(select) {
-            var firstRealOptionIndex = __findFirstRealOptionIndex(select);
-            var lastRealOptionIndex = __findLastRealOptionIndex(select);
+        function _initializeWheelPicker(select) {
+            var firstRealOptionIndex = _findFirstRealOptionIndex(select);
+            var lastRealOptionIndex = _findLastRealOptionIndex(select);
 
-            select.__wheelPicker = {
+            select._wheelPicker = {
                 firstRealOptionIndex: firstRealOptionIndex,
                 lastRealOptionIndex: lastRealOptionIndex,
-                scrollPixelsPerOption: __scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex)
+                scrollPixelsPerOption: _scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex)
             };
 
-            __syncScrollFromSelection(select);
+            _syncScrollFromSelection(select);
             return select.value;
         }
     </script>
@@ -179,12 +179,13 @@
             text-align: center;
             text-align-last: center;
             overflow-y: auto;
-            scrollbar-width: auto;
+            scrollbar-width: none;
             transition: border-color 120ms ease, box-shadow 120ms ease;
         }
 
         .wheel-select::-webkit-scrollbar {
-            width: 10px;
+            width: 0;
+            height: 0;
         }
 
         .wheel-select:focus {
@@ -263,11 +264,11 @@
                 size="5"
                 aria-label="Kies een optie"
                 data-bind="month"
-                data-init="$month = __initializeWheelPicker(el)"
-                data-on-resize="__recalculateWheelPicker(el); __syncScrollFromSelection(el)"
-                data-on:scroll="$month = __syncSelectionFromScroll(el)"
-                data-on:change="__syncScrollFromSelection(el)"
-                data-effect="$month; __syncOptionColors(el)">
+                data-init="$month = _initializeWheelPicker(el)"
+                data-on-resize="_recalculateWheelPicker(el); _syncScrollFromSelection(el)"
+                data-on:scroll="$month = _syncSelectionFromScroll(el)"
+                data-on:change="_syncScrollFromSelection(el)"
+                data-effect="$month; _syncOptionColors(el)">
             <option value="" disabled aria-hidden="true"></option>
             <option value="" disabled aria-hidden="true"></option>
             <option value="1" selected>January</option>
@@ -287,7 +288,7 @@
         </select>
 
     <p class="picker-result">
-        <strong data-text="__selectedOptionLabel($monthSelect)"></strong> <span data-text="$month"></span>
+        <strong data-text="_selectedOptionLabel($monthSelect)"></strong> <span data-text="$month"></span>
     </p>
 
     <pre class="signals-debug" data-json-signals></pre>

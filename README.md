@@ -21,15 +21,15 @@ De demo gebruikt bewust maar twee publieke signals:
 - `$month`: de geselecteerde maandwaarde uit de `<select>`.
 - `$styleAsWheel`: togglet of de wheel-styling aan staat.
 
-De wheel-picker houdt zijn technische metadata juist niet in Datastar-signals bij. Waarden zoals de eerste echte optie-index, de laatste echte optie-index en de scrollafstand per optie leven in `select.__wheelPicker`. Dat zijn implementatiedetails van het DOM-element, geen gedeelde applicatiestate.
+De wheel-picker houdt zijn technische metadata juist niet in Datastar-signals bij. Waarden zoals de eerste echte optie-index, de laatste echte optie-index en de scrollafstand per optie leven in `select._wheelPicker`. Dat zijn implementatiedetails van het DOM-element, geen gedeelde applicatiestate.
 
 ## Scrolllogica
 
-Bij `data-init` berekent `__initializeWheelPicker()` eenmalig de interne wheel-metadata en zet daarna de huidige selectie meteen visueel in het midden.
+Bij `data-init` berekent `_initializeWheelPicker()` eenmalig de interne wheel-metadata en zet daarna de huidige selectie meteen visueel in het midden.
 
-Bij `data-on-resize` rekent `__recalculateWheelPicker()` alleen de layout-afhankelijke scrollafstand opnieuw uit. Daarna centreert `__syncScrollFromSelection()` de huidige selectie opnieuw zodat de wheel netjes uitgelijnd blijft na een resize.
+Bij `data-on-resize` rekent `_recalculateWheelPicker()` alleen de layout-afhankelijke scrollafstand opnieuw uit. Daarna centreert `_syncScrollFromSelection()` de huidige selectie opnieuw zodat de wheel netjes uitgelijnd blijft na een resize.
 
-Bij `data-on:scroll` berekent `__syncSelectionFromScroll()` welke optie in het midden staat, zet `selectedIndex`, werkt de optiekleuren bij en geeft de gekozen `value` terug zodat alleen `$month` verandert.
+Bij `data-on:scroll` berekent `_syncSelectionFromScroll()` welke optie in het midden staat, zet `selectedIndex`, werkt de optiekleuren bij en geeft de gekozen `value` terug zodat alleen `$month` verandert.
 
 ## Selectgedrag
 
