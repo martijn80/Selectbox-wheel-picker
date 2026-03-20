@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>iOS Wheel Picker</title>
     <script>
-        function __scrollPixelsPerOption(el, lo, hi) {
-            return hi > lo ? (el.scrollHeight - el.clientHeight) / (hi - lo) : 0;
+        function __scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex) {
+            return lastRealOptionIndex > firstRealOptionIndex
+                ? (select.scrollHeight - select.clientHeight) / (lastRealOptionIndex - firstRealOptionIndex)
+                : 0;
         }
 
         function __findFirstRealOptionIndex(select) {
@@ -21,67 +23,97 @@
             });
         }
 
+        function __clampCenteredOptionIndex(select, centeredOptionIndex) {
+            var wheelPicker = select.__wheelPicker;
+
+            return Math.min(
+                Math.max(centeredOptionIndex, wheelPicker.firstRealOptionIndex),
+                wheelPicker.lastRealOptionIndex
+            );
+        }
+
+        function __centeredOptionIndexFromScroll(select) {
+            var wheelPicker = select.__wheelPicker;
+
+            if (!wheelPicker.scrollPixelsPerOption) {
+                return wheelPicker.firstRealOptionIndex;
+            }
+
+            return __clampCenteredOptionIndex(
+                select,
+                Math.round(select.scrollTop / wheelPicker.scrollPixelsPerOption) + wheelPicker.firstRealOptionIndex
+            );
+        }
+
+        function __selectedOptionLabel(select) {
+            if (!select) {
+                return '';
+            }
+
+            var option = select.options[select.selectedIndex];
+            return option ? option.text : '';
+        }
+
+        function __syncOptionColors(select) {
+            var selectedIndex = select.selectedIndex;
+
+            Array.from(select.options).forEach(function (option, index) {
+                var distance = Math.abs(index - selectedIndex);
+
+                if (distance === 0) {
+                    option.style.color = '#1c1c1e';
+                } else if (distance === 1) {
+                    option.style.color = 'rgba(60, 60, 67, 0.8)';
+                } else if (distance === 2) {
+                    option.style.color = 'rgba(60, 60, 67, 0.4)';
+                } else if (distance === 3) {
+                    option.style.color = 'rgba(60, 60, 67, 0.1)';
+                } else {
+                    option.style.color = '';
+                }
+            });
+        }
+
+        function __syncSelectionFromScroll(select) {
+            var centeredOptionIndex = __centeredOptionIndexFromScroll(select);
+
+            select.selectedIndex = centeredOptionIndex;
+            __syncOptionColors(select);
+
+            return select.value;
+        }
+
+        function __syncScrollFromSelection(select) {
+            var centeredOptionIndex = __clampCenteredOptionIndex(select, select.selectedIndex);
+            var wheelPicker = select.__wheelPicker;
+
+            select.selectedIndex = centeredOptionIndex;
+            select.scrollTop = (centeredOptionIndex - wheelPicker.firstRealOptionIndex) * wheelPicker.scrollPixelsPerOption;
+            __syncOptionColors(select);
+        }
+
+        function __recalculateWheelPicker(select) {
+            var wheelPicker = select.__wheelPicker;
+
+            wheelPicker.scrollPixelsPerOption = __scrollPixelsPerOption(
+                select,
+                wheelPicker.firstRealOptionIndex,
+                wheelPicker.lastRealOptionIndex
+            );
+        }
+
         function __initializeWheelPicker(select) {
             var firstRealOptionIndex = __findFirstRealOptionIndex(select);
             var lastRealOptionIndex = __findLastRealOptionIndex(select);
 
-            return {
+            select.__wheelPicker = {
                 firstRealOptionIndex: firstRealOptionIndex,
                 lastRealOptionIndex: lastRealOptionIndex,
-                scrollPixelsPerOption: __scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex),
-                i: firstRealOptionIndex
-            };
-        }
-
-        function __recalculateScrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex) {
-            return {
                 scrollPixelsPerOption: __scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex)
             };
-        }
 
-        function __syncCenteredOptionFromScroll(select, scrollPixelsPerOption, firstRealOptionIndex, lastRealOptionIndex) {
-            var centeredOptionIndex = Math.round(select.scrollTop / scrollPixelsPerOption) + firstRealOptionIndex;
-            var clampedOptionIndex = Math.min(
-                Math.max(centeredOptionIndex, firstRealOptionIndex),
-                lastRealOptionIndex
-            );
-
-            select.selectedIndex = clampedOptionIndex;
-
-            return {
-                i: clampedOptionIndex
-            };
-        }
-
-        function __centerSelectionAfterChange(select, scrollPixelsPerOption, firstRealOptionIndex, lastRealOptionIndex) {
-            var clampedOptionIndex = Math.min(
-                Math.max(select.selectedIndex, firstRealOptionIndex),
-                lastRealOptionIndex
-            );
-
-            select.scrollTop = (clampedOptionIndex - firstRealOptionIndex) * scrollPixelsPerOption;
-        }
-
-        function __selectedOptionLabelFromIndex(select, centeredOptionIndex) {
-            var option = select.options[centeredOptionIndex];
-            return option ? option.text : '';
-        }
-
-        function __updateOptionColors(select, selectedIdx) {
-            Array.from(select.options).forEach(function (opt, i) {
-                var dist = Math.abs(i - selectedIdx);
-                if (dist === 0) {
-                    opt.style.color = '#1c1c1e';
-                } else if (dist === 1) {
-                    opt.style.color = 'rgba(60, 60, 67, 0.8)';
-                } else if (dist ===  2) {
-                    opt.style.color = 'rgba(60, 60, 67, 0.4)';
-                } else if (dist === 3) {
-                    opt.style.color = 'rgba(60, 60, 67, 0.1)';
-                } else {
-                    opt.style.color = '';
-                }
-            });
+            __syncScrollFromSelection(select);
+            return select.value;
         }
     </script>
     <script type="module" src="datastar-1-0-0-rc-8-d2712d09270519cd.js"></script>
@@ -216,7 +248,7 @@
 
     </style>
 </head>
-<body data-signals="{firstRealOptionIndex: 0, lastRealOptionIndex: 0, scrollPixelsPerOption: 0, i: 0, styleAsWheel: true}">
+<body data-signals="{styleAsWheel: true}">
     <div class="picker-card">
         <p class="picker-title">Months</p>
 
@@ -226,15 +258,16 @@
         </label>
 
         <select
+                data-ref="monthSelect"
                 data-class="{ 'wheel-select' : $styleAsWheel }"
                 size="5"
                 aria-label="Kies een optie"
                 data-bind="month"
-                data-init="({ firstRealOptionIndex: $firstRealOptionIndex, lastRealOptionIndex: $lastRealOptionIndex, scrollPixelsPerOption: $scrollPixelsPerOption, i: $i } = __initializeWheelPicker(el))"
-                data-on-resize="({ scrollPixelsPerOption: $scrollPixelsPerOption } = __recalculateScrollPixelsPerOption(el, $firstRealOptionIndex, $lastRealOptionIndex))"
-                data-on:scroll="({ i: $i } = __syncCenteredOptionFromScroll(evt.target, $scrollPixelsPerOption, $firstRealOptionIndex, $lastRealOptionIndex))"
-                data-on:change="__centerSelectionAfterChange(el, $scrollPixelsPerOption, $firstRealOptionIndex, $lastRealOptionIndex)"
-                data-effect="__updateOptionColors(el, $i)">
+                data-init="$month = __initializeWheelPicker(el)"
+                data-on-resize="__recalculateWheelPicker(el); __syncScrollFromSelection(el)"
+                data-on:scroll="$month = __syncSelectionFromScroll(el)"
+                data-on:change="__syncScrollFromSelection(el)"
+                data-effect="$month; __syncOptionColors(el)">
             <option value="" disabled aria-hidden="true"></option>
             <option value="" disabled aria-hidden="true"></option>
             <option value="1" selected>January</option>
@@ -254,7 +287,7 @@
         </select>
 
     <p class="picker-result">
-        <strong data-text="__selectedOptionLabelFromIndex(document.querySelector('.wheel-select'), $i)"></strong> <span data-text="$month"></span>
+        <strong data-text="__selectedOptionLabel($monthSelect)"></strong> <span data-text="$month"></span>
     </p>
 
     <pre class="signals-debug" data-json-signals></pre>
