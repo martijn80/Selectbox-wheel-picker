@@ -4,7 +4,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>iOS Wheel Picker</title>
-    <script>e
+    <script>
         function _scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex) {
             return lastRealOptionIndex > firstRealOptionIndex
                 ? (select.scrollHeight - select.clientHeight) / (lastRealOptionIndex - firstRealOptionIndex)
@@ -54,6 +54,15 @@
             return option ? option.text : '';
         }
 
+        function _scheduleSnapToSelection(select) {
+            var wheelPicker = select._wheelPicker;
+
+            clearTimeout(wheelPicker.snapTimeoutId);
+            wheelPicker.snapTimeoutId = setTimeout(function () {
+                _syncScrollFromSelection(select, 'smooth');
+            }, 200);
+        }
+
         function _syncOptionColors(select) {
             var selectedIndex = select.selectedIndex;
 
@@ -79,16 +88,27 @@
 
             select.selectedIndex = centeredOptionIndex;
             _syncOptionColors(select);
+            _scheduleSnapToSelection(select);
 
             return select.value;
         }
 
-        function _syncScrollFromSelection(select) {
+        function _syncScrollFromSelection(select, behavior) {
             var centeredOptionIndex = _clampCenteredOptionIndex(select, select.selectedIndex);
             var wheelPicker = select._wheelPicker;
+            var targetScrollTop = (centeredOptionIndex - wheelPicker.firstRealOptionIndex) * wheelPicker.scrollPixelsPerOption;
 
             select.selectedIndex = centeredOptionIndex;
-            select.scrollTop = (centeredOptionIndex - wheelPicker.firstRealOptionIndex) * wheelPicker.scrollPixelsPerOption;
+
+            if (behavior === 'smooth' && typeof select.scrollTo === 'function') {
+                select.scrollTo({
+                    top: targetScrollTop,
+                    behavior: 'smooth'
+                });
+            } else {
+                select.scrollTop = targetScrollTop;
+            }
+
             _syncOptionColors(select);
         }
 
@@ -109,7 +129,8 @@
             select._wheelPicker = {
                 firstRealOptionIndex: firstRealOptionIndex,
                 lastRealOptionIndex: lastRealOptionIndex,
-                scrollPixelsPerOption: _scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex)
+                scrollPixelsPerOption: _scrollPixelsPerOption(select, firstRealOptionIndex, lastRealOptionIndex),
+                snapTimeoutId: null
             };
 
             _syncScrollFromSelection(select);
@@ -128,6 +149,7 @@
             --field-bg: #ffffff;
             --field-border: #c8d1db;
             --focus-ring: rgba(9, 105, 218, 0.16);
+            --wheel-option-height: 1.5em;
         }
 
         *, *::before, *::after {
@@ -195,11 +217,19 @@
         }
 
         .wheel-select option {
-            padding: 6px 10px;
+            height: var(--wheel-option-height);
+            line-height: 1.2;
+            padding: 0 10px;
             background: var(--field-bg);
             color: var(--text-muted);
             font-size: 16px;
             font-weight: 400;
+        }
+
+        .wheel-select option:disabled {
+            height: var(--wheel-option-height);
+            line-height: 1.2;
+            padding: 0 10px;
         }
 
         .wheel-select option:checked {
@@ -267,7 +297,7 @@
                 data-init="$month = _initializeWheelPicker(el)"
                 data-on-resize="_recalculateWheelPicker(el); _syncScrollFromSelection(el)"
                 data-on:scroll="$month = _syncSelectionFromScroll(el)"
-                data-on:change="_syncScrollFromSelection(el)"
+                data-on:change="$month = el.value; _syncOptionColors(el); _scheduleSnapToSelection(el)"
                 data-effect="$month; _syncOptionColors(el)">
             <option value="" disabled aria-hidden="true"></option>
             <option value="" disabled aria-hidden="true"></option>
@@ -288,7 +318,7 @@
         </select>
 
     <p class="picker-result">
-        <strong data-text="_selectedOptionLabel($monthSelect)"></strong> <span data-text="$month"></span>
+        <strong data-text="$month; _selectedOptionLabel($monthSelect)"></strong> <span data-text="$month"></span>
     </p>
 
     <pre class="signals-debug" data-json-signals></pre>

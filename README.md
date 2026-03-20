@@ -29,7 +29,7 @@ Bij `data-init` berekent `_initializeWheelPicker()` eenmalig de interne wheel-me
 
 Bij `data-on-resize` rekent `_recalculateWheelPicker()` alleen de layout-afhankelijke scrollafstand opnieuw uit. Daarna centreert `_syncScrollFromSelection()` de huidige selectie opnieuw zodat de wheel netjes uitgelijnd blijft na een resize.
 
-Bij `data-on:scroll` berekent `_syncSelectionFromScroll()` welke optie in het midden staat, zet `selectedIndex`, werkt de optiekleuren bij en geeft de gekozen `value` terug zodat alleen `$month` verandert.
+Bij `data-on:scroll` berekent `_syncSelectionFromScroll()` welke optie in het midden staat, zet `selectedIndex`, werkt de optiekleuren bij en plant daarna een snap in. Als dezelfde selectie 200ms stabiel blijft, centreert `_scheduleSnapToSelection()` die optie alsnog exact in het midden.
 
 ## Selectgedrag
 
@@ -45,6 +45,6 @@ De `<select>` blijft de toegankelijke basis:
 - `data-init`: initialiseert de interne wheel-state op het element en zet `$month` op de actuele selectie.
 - `data-on-resize`: herberekent alleen de layout-metadata en centreert daarna de bestaande selectie opnieuw.
 - `data-on:scroll`: synchroniseert scrollpositie naar selectie en werkt daarna `$month` bij.
-- `data-on:change`: centreert een via klik of toetsenbord gekozen optie visueel.
-- `data-text`: leest het label rechtstreeks van `$monthSelect`.
+- `data-on:change`: werkt direct de selectie en optiekleuren bij en laat de gekozen optie na 200ms stabiliteit naar het midden snappen.
+- `data-text`: reageert op `$month` en leest daarna het label rechtstreeks van `$monthSelect`.
 - `data-effect`: werkt de optiekleuren bij wanneer `$month` verandert.
