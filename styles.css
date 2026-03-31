@@ -1,0 +1,145 @@
+@view-transition {
+  navigation: auto;
+}
+
+:root {
+  --gap: 16px;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --border: 1px solid rgba(0, 0, 0, 0.08);
+  --bg: #f5f7fb;
+  --card-bg: #ffffff;
+  --text: #1e2430;
+  --muted: #667085;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.wrapper {
+  width: min(1100px, calc(100% - 32px));
+  margin: 40px auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: white;
+  background: #2563eb;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap);
+}
+
+.card {
+  display: block;
+  min-height: 180px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card-bg);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: clip;
+  position: relative;
+}
+
+.card-inner {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-number {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.card-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* Optioneel: globale timing van de paginatransitie */
+::view-transition-group(*) {
+  animation-duration: 500ms;
+  animation-timing-function: ease;
+}
+
+/* Optioneel: iets subtielere blending */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 500ms;
+}
+
+@media (max-width: 820px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
