@@ -1,0 +1,828 @@
+<!DOCTYPE html><html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVG Sparkline Demo</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121932;
+      --panel-2: #1a2448;
+      --text: #edf2ff;
+      --muted: #aeb9dd;
+      --border: rgba(255,255,255,.12);
+      --accent: oklch(0.72 0.16 250);
+      --accent-2: oklch(0.75 0.16 155);
+      --accent-3: oklch(0.74 0.18 25);
+      --code: #0a0f1f;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+    }* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #0a1021 0%, #0c1326 100%);
+  color: var(--text);
+  font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  padding: 32px;
+}
+
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+}
+
+.hero {
+  display: grid;
+  gap: 10px;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  line-height: 1.15;
+}
+
+h1 { font-size: clamp(2rem, 4vw, 3rem); }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; }
+
+p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.2fr) minmax(320px, .8fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: 24px;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.toolbar {
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field.inline {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+label {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+input, select, textarea, button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+textarea {
+  min-height: 84px;
+  resize: vertical;
+  width: 100%;
+}
+
+button {
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+}
+
+button:hover {
+  border-color: rgba(255,255,255,.22);
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.demo-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.demo-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+
+.demo-item > .meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.demo-item small, .mono, code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.muted { color: var(--muted); }
+
+.spark-xl {
+  inline-size: 100%;
+  block-size: 84px;
+}
+
+.spark-md {
+  inline-size: 180px;
+  block-size: 34px;
+}
+
+.spark-sm {
+  inline-size: 120px;
+  block-size: 28px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255,255,255,.02);
+  display: grid;
+  gap: 4px;
+}
+
+.stat strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.code {
+  background: var(--code);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  overflow: auto;
+}
+
+pre {
+  margin: 0;
+  padding: 16px;
+  color: #d6e2ff;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.03);
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.product-list {
+  display: grid;
+  gap: 12px;
+}
+
+.product {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  body { padding: 18px; }
+  .stats { grid-template-columns: 1fr; }
+}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <span class="pill">Web Component · SVG · CSS-kleur · Tooltip · Animatie · Area fill</span>
+      <h1>SVG sparkline demo</h1>
+      <p>
+        Deze demo bevat een <strong>custom element</strong> dat een sparkline rendert in SVG. De lijnkleur komt uit CSS via
+        <code>currentColor</code>, de area fill volgt dezelfde kleur, hover toont de actuele waarde en de lijn bouwt geanimeerd op.
+        Het element vuurt <code>spark-hover</code> en <code>spark-leave</code> events uit, dus het is direct bruikbaar met DataStar.
+      </p>
+    </section><div class="grid">
+  <div class="stack">
+    <section class="card">
+      <div>
+        <h2>Interactieve demo</h2>
+        <p>Pas data en styling aan. De grote grafiek hieronder gebruikt exact dezelfde component als de kleine sparklines.</p>
+      </div>
+
+      <div class="toolbar">
+        <div class="field">
+          <label for="values">Waardes (komma-gescheiden of JSON array)</label>
+          <textarea id="values">[12,16,11,18,20,17,22,19,25,21,27,24]</textarea>
+        </div>
+
+        <div class="field">
+          <label for="labels">Labels (optioneel, komma-gescheiden of JSON array)</label>
+          <textarea id="labels">["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"]</textarea>
+        </div>
+
+        <div class="field inline">
+          <div>
+            <label for="color">Kleur</label>
+            <input id="color" type="color" value="#78a6ff" />
+          </div>
+          <div>
+            <label for="width">Lijndikte</label>
+            <input id="width" type="number" min="1" max="8" step="0.5" value="2.5" />
+          </div>
+        </div>
+
+        <div class="field inline">
+          <div>
+            <label for="opacity">Area opacity</label>
+            <input id="opacity" type="number" min="0" max="1" step="0.05" value="0.18" />
+          </div>
+          <div>
+            <label for="duration">Animatie (ms)</label>
+            <input id="duration" type="number" min="0" max="4000" step="50" value="850" />
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button type="button" data-preset="steady">Steady growth</button>
+          <button type="button" data-preset="volatile">Volatile</button>
+          <button type="button" data-preset="down">Downtrend</button>
+          <button type="button" data-preset="spike">Spike</button>
+        </div>
+      </div>
+
+      <div class="demo-item">
+        <div class="meta">
+          <strong>Live preview</strong>
+          <small class="muted" id="hoverState">Hover over een punt</small>
+        </div>
+
+        <svg-sparkline
+          id="sparkMain"
+          class="spark-xl"
+          values="[12,16,11,18,20,17,22,19,25,21,27,24]"
+          labels='["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"]'
+          aria-label="Omzet sparkline"
+          style="color:#78a6ff; --sparkline-width:2.5; --sparkline-fill-opacity:.18; --sparkline-duration:850ms"
+        ></svg-sparkline>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="muted">Laagste</span>
+          <strong id="statMin">11</strong>
+        </div>
+        <div class="stat">
+          <span class="muted">Hoogste</span>
+          <strong id="statMax">27</strong>
+        </div>
+        <div class="stat">
+          <span class="muted">Laatste</span>
+          <strong id="statLast">24</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div>
+        <h2>Mini dashboard voorbeelden</h2>
+        <p>Zelfde component, andere afmetingen en kleuren via CSS. Geen inline SVG hacks nodig.</p>
+      </div>
+
+      <div class="product-list">
+        <div class="product">
+          <div>
+            <strong>MRR</strong>
+            <div class="muted">€ 42.380 · laatste 12 maanden</div>
+          </div>
+          <svg-sparkline class="spark-md" values="[12,13,14,15,17,18,20,21,23,25,26,29]" style="color: var(--accent);"></svg-sparkline>
+        </div>
+
+        <div class="product">
+          <div>
+            <strong>Deployment failures</strong>
+            <div class="muted">weekoverzicht</div>
+          </div>
+          <svg-sparkline class="spark-md" values="[9,8,6,7,5,4,4]" style="color: var(--accent-2); --sparkline-fill-opacity:.14"></svg-sparkline>
+        </div>
+
+        <div class="product">
+          <div>
+            <strong>Churn</strong>
+            <div class="muted">laatste 8 metingen</div>
+          </div>
+          <svg-sparkline class="spark-md" values="[6,8,7,12,9,8,7,6]" style="color: var(--accent-3); --sparkline-fill-opacity:.16"></svg-sparkline>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <div>
+        <h2>DataStar integratie</h2>
+        <p>De component gebruikt attributes als input en bubbelt custom events naar boven. Dat past goed bij DataStar.</p>
+      </div>
+
+      <div class="code"><pre>&lt;div
+
+data-signals="{series:[12,16,11,18,20], labels:['ma','di','wo','do','vr'], hover:null}" data-on:spark-hover="$hover = evt.detail" data-on:spark-leave="$hover = null" > <svg-sparkline data-attr:values="JSON.stringify($series)" data-attr:labels="JSON.stringify($labels)" style="color: var(--accent); width: 180px; height: 34px" ></svg-sparkline>
+
+<div data-show="$hover !== null"> <span data-text="$hover.label"></span>: <span data-text="$hover.value"></span> </div> </div></pre></div> </section>
+
+<section class="card">
+      <div>
+        <h2>Belangrijkste API</h2>
+      </div>
+      <ul class="list">
+        <li><code>values</code>: JSON array of komma-gescheiden numerieke lijst</li>
+        <li><code>labels</code>: optioneel, JSON array of komma-gescheiden lijst</li>
+        <li><code>min</code> / <code>max</code>: optioneel vaste schaal</li>
+        <li><code>currentColor</code>: lijn en area nemen automatisch de host-kleur over</li>
+        <li><code>spark-hover</code>: detail bevat <code>{ index, value, label, values }</code></li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div>
+        <h2>Copy/paste markup</h2>
+      </div>
+      <div class="code"><pre>&lt;svg-sparkline
+
+values="[12,16,11,18,20,17,22]" labels='["ma","di","wo","do","vr","za","zo"]' class="spark" style="color: rebeccapurple; --sparkline-width: 2.5; --sparkline-fill-opacity: .18" ></svg-sparkline></pre></div> </section> </div> </div>
+
+  </div>  <script type="module">
+    class SvgSparkline extends HTMLElement {
+      static observedAttributes = ['values', 'labels', 'min', 'max'];
+
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+
+        this.shadowRoot.innerHTML = `
+          <style>
+            :host {
+              display: inline-block;
+              inline-size: 100%;
+              block-size: 2rem;
+              min-inline-size: 4rem;
+              position: relative;
+              color: var(--sparkline-color, currentColor);
+            }
+
+            svg {
+              display: block;
+              inline-size: 100%;
+              block-size: 100%;
+              overflow: visible;
+            }
+
+            [part="area"] {
+              fill: currentColor;
+              fill-opacity: var(--sparkline-fill-opacity, .14);
+              pointer-events: none;
+            }
+
+            [part="line"] {
+              fill: none;
+              stroke: currentColor;
+              stroke-width: var(--sparkline-width, 2);
+              stroke-linecap: round;
+              stroke-linejoin: round;
+              vector-effect: non-scaling-stroke;
+            }
+
+            [part="guide"] {
+              stroke: currentColor;
+              stroke-opacity: .22;
+              stroke-width: 1;
+              vector-effect: non-scaling-stroke;
+              display: none;
+            }
+
+            [part="marker"] {
+              fill: currentColor;
+              stroke: color-mix(in srgb, currentColor 22%, white);
+              stroke-width: 1.2;
+              display: none;
+            }
+
+            [part="hit"] {
+              fill: none;
+              stroke: transparent;
+              stroke-width: 18;
+              vector-effect: non-scaling-stroke;
+              pointer-events: stroke;
+            }
+
+            [part="tooltip"] {
+              position: absolute;
+              left: 0;
+              bottom: 100%;
+              transform: translate(-50%, -0.4rem);
+              padding: .28rem .48rem;
+              border-radius: .45rem;
+              font: 12px/1.2 system-ui, sans-serif;
+              white-space: nowrap;
+              background: var(--sparkline-tooltip-bg, Canvas);
+              color: var(--sparkline-tooltip-color, CanvasText);
+              border: 1px solid rgb(0 0 0 / 0.12);
+              box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+              pointer-events: none;
+              opacity: 0;
+              transition: opacity 120ms ease;
+              z-index: 2;
+            }
+
+            [part="tooltip"][data-open="true"] {
+              opacity: 1;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              [part="tooltip"] {
+                transition: none;
+              }
+            }
+          </style><svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+        <path part="area"></path>
+        <line part="guide" y1="2" y2="22"></line>
+        <path part="line"></path>
+        <path part="hit"></path>
+        <circle part="marker" r="2.4"></circle>
+      </svg>
+
+      <div part="tooltip" role="status" aria-live="polite"></div>
+    `;
+
+    this.$svg = this.shadowRoot.querySelector('svg');
+    this.$area = this.shadowRoot.querySelector('[part="area"]');
+    this.$line = this.shadowRoot.querySelector('[part="line"]');
+    this.$hit = this.shadowRoot.querySelector('[part="hit"]');
+    this.$guide = this.shadowRoot.querySelector('[part="guide"]');
+    this.$marker = this.shadowRoot.querySelector('[part="marker"]');
+    this.$tooltip = this.shadowRoot.querySelector('[part="tooltip"]');
+
+    this._values = [];
+    this._labels = [];
+    this._points = [];
+    this._hoverIndex = -1;
+
+    this.onPointerMove = this.onPointerMove.bind(this);
+    this.onPointerLeave = this.onPointerLeave.bind(this);
+  }
+
+  connectedCallback() {
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
+    this.$svg.addEventListener('pointermove', this.onPointerMove);
+    this.$svg.addEventListener('pointerleave', this.onPointerLeave);
+    this.render();
+  }
+
+  disconnectedCallback() {
+    this.$svg.removeEventListener('pointermove', this.onPointerMove);
+    this.$svg.removeEventListener('pointerleave', this.onPointerLeave);
+  }
+
+  attributeChangedCallback() {
+    this.render();
+  }
+
+  parseList(raw, asNumbers = false) {
+    if (!raw) return [];
+
+    try {
+      if (raw.trim().startsWith('[')) {
+        const parsed = JSON.parse(raw);
+        return asNumbers
+          ? parsed.map(Number).filter(Number.isFinite)
+          : parsed.map(v => String(v));
+      }
+    } catch (_) {}
+
+    const arr = raw
+      .split(',')
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    return asNumbers
+      ? arr.map(Number).filter(Number.isFinite)
+      : arr;
+  }
+
+  getMinMax(values) {
+    let min = Number(this.getAttribute('min'));
+    let max = Number(this.getAttribute('max'));
+
+    if (!Number.isFinite(min)) min = Math.min(...values);
+    if (!Number.isFinite(max)) max = Math.max(...values);
+
+    if (min === max) {
+      min -= 1;
+      max += 1;
+    }
+
+    return { min, max };
+  }
+
+  render() {
+    const values = this.parseList(this.getAttribute('values'), true);
+    const labels = this.parseList(this.getAttribute('labels'), false);
+
+    this._values = values;
+    this._labels = labels;
+    this._points = [];
+    this._hoverIndex = -1;
+
+    if (!values.length) {
+      this.$line.setAttribute('d', '');
+      this.$area.setAttribute('d', '');
+      this.$hit.setAttribute('d', '');
+      this.hideHover();
+      return;
+    }
+
+    const { min, max } = this.getMinMax(values);
+    const top = 2;
+    const bottom = 22;
+    const left = 1;
+    const right = 99;
+    const rangeY = bottom - top;
+
+    const points = values.map((value, index) => {
+      const x = values.length === 1
+        ? 50
+        : left + (index / (values.length - 1)) * (right - left);
+
+      const y = bottom - ((value - min) / (max - min)) * rangeY;
+
+      return { x, y, value, label: labels[index] ?? null, index };
+    });
+
+    this._points = points;
+
+    let lineD = '';
+    if (points.length === 1) {
+      const p = points[0];
+      lineD = `M ${p.x - 0.01} ${p.y} L ${p.x + 0.01} ${p.y}`;
+    } else {
+      lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    }
+
+    const first = points[0];
+    const last = points[points.length - 1];
+    const areaD = `${lineD} L ${last.x} ${bottom} L ${first.x} ${bottom} Z`;
+
+    this.$line.setAttribute('d', lineD);
+    this.$area.setAttribute('d', areaD);
+    this.$hit.setAttribute('d', lineD);
+    this.hideHover(true);
+    this.animateLine();
+  }
+
+  animateLine() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const length = this.$line.getTotalLength?.() ?? 0;
+    if (!Number.isFinite(length) || length <= 0) return;
+
+    this.$line.style.transition = 'none';
+    this.$line.style.strokeDasharray = String(length);
+    this.$line.style.strokeDashoffset = String(length);
+    this.$area.style.transition = 'none';
+    this.$area.style.opacity = '0';
+
+    this.$line.getBoundingClientRect();
+
+    requestAnimationFrame(() => {
+      this.$line.style.transition = 'stroke-dashoffset var(--sparkline-duration, 700ms) cubic-bezier(.22,.61,.36,1)';
+      this.$line.style.strokeDashoffset = '0';
+      this.$area.style.transition = 'opacity calc(var(--sparkline-duration, 700ms) * .65) ease';
+      this.$area.style.opacity = '1';
+    });
+  }
+
+  onPointerMove(evt) {
+    if (!this._points.length) return;
+
+    const rect = this.$svg.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
+    const index = this._points.length === 1
+      ? 0
+      : Math.round(ratio * (this._points.length - 1));
+
+    if (index === this._hoverIndex) return;
+    this._hoverIndex = index;
+
+    const point = this._points[index];
+    const hostRect = this.getBoundingClientRect();
+    const leftPx = (point.x / 100) * rect.width;
+    const clampedLeft = Math.max(28, Math.min(hostRect.width - 28, leftPx));
+
+    this.$guide.setAttribute('x1', point.x);
+    this.$guide.setAttribute('x2', point.x);
+    this.$guide.style.display = 'block';
+
+    this.$marker.setAttribute('cx', point.x);
+    this.$marker.setAttribute('cy', point.y);
+    this.$marker.style.display = 'block';
+
+    this.$tooltip.textContent = point.label
+      ? `${point.label}: ${point.value}`
+      : String(point.value);
+
+    this.$tooltip.style.left = `${clampedLeft}px`;
+    this.$tooltip.dataset.open = 'true';
+
+    this.dispatchEvent(new CustomEvent('spark-hover', {
+      detail: {
+        index: point.index,
+        value: point.value,
+        label: point.label,
+        values: [...this._values]
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  onPointerLeave() {
+    if (this._hoverIndex === -1) return;
+    this._hoverIndex = -1;
+    this.hideHover();
+
+    this.dispatchEvent(new CustomEvent('spark-leave', {
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  hideHover(silent = false) {
+    this.$guide.style.display = 'none';
+    this.$marker.style.display = 'none';
+    delete this.$tooltip.dataset.open;
+
+    if (!silent && this._hoverIndex !== -1) {
+      this._hoverIndex = -1;
+    }
+  }
+}
+
+customElements.define('svg-sparkline', SvgSparkline);
+
+const $ = (sel) => document.querySelector(sel);
+const valuesEl = $('#values');
+const labelsEl = $('#labels');
+const colorEl = $('#color');
+const widthEl = $('#width');
+const opacityEl = $('#opacity');
+const durationEl = $('#duration');
+const spark = $('#sparkMain');
+const hoverState = $('#hoverState');
+const statMin = $('#statMin');
+const statMax = $('#statMax');
+const statLast = $('#statLast');
+
+function parseValues(raw) {
+  try {
+    if (raw.trim().startsWith('[')) {
+      return JSON.parse(raw).map(Number).filter(Number.isFinite);
+    }
+  } catch (_) {}
+
+  return raw.split(',').map(v => Number(v.trim())).filter(Number.isFinite);
+}
+
+function parseLabels(raw) {
+  if (!raw.trim()) return [];
+
+  try {
+    if (raw.trim().startsWith('[')) {
+      return JSON.parse(raw).map(String);
+    }
+  } catch (_) {}
+
+  return raw.split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function updatePreview() {
+  const values = parseValues(valuesEl.value);
+  const labels = parseLabels(labelsEl.value);
+
+  spark.setAttribute('values', JSON.stringify(values));
+  spark.setAttribute('labels', JSON.stringify(labels));
+  spark.style.color = colorEl.value;
+  spark.style.setProperty('--sparkline-width', widthEl.value);
+  spark.style.setProperty('--sparkline-fill-opacity', opacityEl.value);
+  spark.style.setProperty('--sparkline-duration', `${durationEl.value}ms`);
+
+  if (values.length) {
+    statMin.textContent = Math.min(...values);
+    statMax.textContent = Math.max(...values);
+    statLast.textContent = values.at(-1);
+  } else {
+    statMin.textContent = '–';
+    statMax.textContent = '–';
+    statLast.textContent = '–';
+  }
+}
+
+for (const el of [valuesEl, labelsEl, colorEl, widthEl, opacityEl, durationEl]) {
+  el.addEventListener('input', updatePreview);
+}
+
+for (const btn of document.querySelectorAll('[data-preset]')) {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.preset;
+    const presets = {
+      steady: [12,13,14,16,17,18,20,21,23,24,26,28],
+      volatile: [18,9,21,11,25,13,19,12,24,17,27,15],
+      down: [28,26,25,23,22,20,18,17,15,14,13,11],
+      spike: [8,9,10,10,11,38,12,13,14,13,12,11]
+    };
+    valuesEl.value = JSON.stringify(presets[key]);
+    updatePreview();
+  });
+}
+
+spark.addEventListener('spark-hover', (evt) => {
+  const { label, value, index } = evt.detail;
+  hoverState.textContent = `${label ?? `punt ${index + 1}`}: ${value}`;
+});
+
+spark.addEventListener('spark-leave', () => {
+  hoverState.textContent = 'Hover over een punt';
+});
+
+updatePreview();
+
+  </script>
+</body>
+</html>
